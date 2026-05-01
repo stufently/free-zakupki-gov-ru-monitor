@@ -1,0 +1,66 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Read version from manifest
+        id: ver
+        run: |
+          VERSION=$(jq -r .version extension/manifest.json)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Run parser tests
+        working-directory: tests
+        run: |
+          npm install --silent --no-audit --no-fund
+          node run.mjs
+
+      - name: Build ZIP
+        run: |
+          mkdir -p dist
+          cd extension
+          zip -r "../dist/free-zakupki-gov-ru-monitor-${{ steps.ver.outputs.version }}.zip" . \
+            -x "*.DS_Store" "*.map"
+          cd ..
+          ls -la dist
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-zip
+          path: dist/*.zip
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip
+          generate_release_notes: true
+          name: v${{ steps.ver.outputs.version }}
+          body: |
+            Автоматическая сборка из тега `${{ github.ref_name }}`.
+
+            ## Установка
+
+            1. Скачайте `free-zakupki-gov-ru-monitor-${{ steps.ver.outputs.version }}.zip` ниже.
+            2. Распакуйте в любую папку.
+            3. Откройте `chrome://extensions`, включите режим разработчика.
+            4. Нажмите «Загрузить распакованное расширение» и выберите распакованную папку.
+
+            Если предпочитаете git: `git clone https://github.com/stufently/free-zakupki-gov-ru-monitor.git` и выберите подпапку `extension/`.

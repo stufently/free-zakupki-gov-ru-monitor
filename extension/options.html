@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <title>Настройки — Мониторинг госзакупок</title>
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <main>
+    <h1>Бесплатный мониторинг госзакупок</h1>
+    <p class="subtitle">RSS-ленты с zakupki.gov.ru. Расширение проверяет их по расписанию и присылает уведомления о новых записях.</p>
+
+    <section>
+      <h2>Расписание</h2>
+      <p class="hint">Минимум — 1 минута (ограничение Chrome). По умолчанию — 10 минут.</p>
+      <label>
+        Проверять каждые
+        <input type="number" id="interval" min="1" max="10080" step="1" value="10" />
+        минут
+      </label>
+      <div class="presets">
+        <button type="button" class="preset" data-min="5">5 мин</button>
+        <button type="button" class="preset" data-min="10">10 мин</button>
+        <button type="button" class="preset" data-min="30">30 мин</button>
+        <button type="button" class="preset" data-min="60">1 час</button>
+        <button type="button" class="preset" data-min="180">3 часа</button>
+        <button type="button" class="preset" data-min="720">12 часов</button>
+        <button type="button" class="preset" data-min="1440">24 часа</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Ленты</h2>
+      <p class="hint">
+        Откройте zakupki.gov.ru, настройте поиск с нужными фильтрами и нажмите кнопку «RSS» под результатами — скопируйте оттуда ссылку.
+      </p>
+      <div id="feeds"></div>
+      <button id="add-feed" type="button">+ Добавить ленту</button>
+    </section>
+
+    <section class="actions">
+      <button id="save" type="button" class="primary">Сохранить</button>
+      <button id="check-now" type="button">Проверить сейчас</button>
+      <span id="status"></span>
+    </section>
+
+    <footer>
+      <p>
+        Open source: <a href="https://github.com/stufently/free-zakupki-gov-ru-monitor" target="_blank" rel="noopener">github.com/stufently/free-zakupki-gov-ru-monitor</a>
+      </p>
+    </footer>
+  </main>
+
+  <template id="feed-tpl">
+    <div class="feed">
+      <input type="text" class="title" placeholder="Название (например: Тендеры по Москве)" />
+      <input type="url" class="url" placeholder="https://zakupki.gov.ru/epz/order/extendedsearch/rss?…" />
+      <label class="enabled"><input type="checkbox" checked /> Активна</label>
+      <button type="button" class="remove">Удалить</button>
+    </div>
+  </template>
+
+  <script src="options.js" type="module"></script>
+</body>
+</html>

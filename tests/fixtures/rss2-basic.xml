@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Тестовый фид</title>
+    <link>https://zakupki.gov.ru/</link>
+    <description>Test</description>
+    <item>
+      <title>Закупка 1</title>
+      <link>https://zakupki.gov.ru/foo/1</link>
+      <guid isPermaLink="false">guid-1</guid>
+      <pubDate>Fri, 01 May 2026 10:00:00 +0300</pubDate>
+      <description>Описание 1</description>
+    </item>
+    <item>
+      <title>Закупка 2</title>
+      <link>https://zakupki.gov.ru/foo/2</link>
+      <guid isPermaLink="false">guid-2</guid>
+      <pubDate>Fri, 01 May 2026 11:00:00 +0300</pubDate>
+      <description>Описание 2</description>
+    </item>
+  </channel>
+</rss>

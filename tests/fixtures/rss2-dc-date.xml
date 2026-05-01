@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>DC date feed</title>
+    <link>https://example.com/</link>
+    <description>Test</description>
+    <item>
+      <title>Запись с dc:date</title>
+      <link>https://example.com/1</link>
+      <guid>dc-1</guid>
+      <dc:date>2026-04-30T12:00:00Z</dc:date>
+      <description>x</description>
+    </item>
+  </channel>
+</rss>

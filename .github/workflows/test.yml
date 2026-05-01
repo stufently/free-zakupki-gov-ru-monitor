@@ -1,0 +1,30 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run parser tests
+        working-directory: tests
+        run: |
+          npm install --silent --no-audit --no-fund
+          node run.mjs
+
+      - name: Validate manifest.json
+        run: |
+          jq empty extension/manifest.json
+          jq -r .manifest_version extension/manifest.json | grep -q "^3$"
+          jq -r .version extension/manifest.json | grep -E "^[0-9]+\.[0-9]+\.[0-9]+$"

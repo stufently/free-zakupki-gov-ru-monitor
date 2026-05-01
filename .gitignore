@@ -1,0 +1,8 @@
+.DS_Store
+node_modules/
+*.zip
+*.crx
+*.pem
+.idea/
+.vscode/
+tests/node_modules/

@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "Бесплатный мониторинг госзакупок (zakupki.gov.ru)",
+  "short_name": "Zakupki Monitor",
+  "version": "0.1.0",
+  "default_locale": "ru",
+  "description": "Бесплатный мониторинг закупок на zakupki.gov.ru через RSS. Уведомления о новых тендерах без регистрации и подписок.",
+  "minimum_chrome_version": "119",
+  "permissions": ["alarms", "notifications", "storage"],
+  "host_permissions": [
+    "https://zakupki.gov.ru/*",
+    "https://*.zakupki.gov.ru/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Мониторинг госзакупок",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

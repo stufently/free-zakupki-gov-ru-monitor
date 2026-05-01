@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Entities feed</title>
+    <link>https://example.com/</link>
+    <description>Test</description>
+    <item>
+      <title>Entities</title>
+      <link>https://example.com/1</link>
+      <guid>e-1</guid>
+      <description>&lt;p&gt;Закупка №42 &amp;nbsp; на &amp;laquo;услуги&amp;raquo; &amp;mdash; срочно&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

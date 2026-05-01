@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <title>Atom feed</title>
+  <link href="https://example.com/" rel="self"/>
+  <id>https://example.com/feed</id>
+  <entry>
+    <title>Запись</title>
+    <link rel="self" href="https://example.com/self"/>
+    <link rel="alternate" href="https://example.com/alt"/>
+    <id>entry-1</id>
+    <dc:date>2026-05-01T12:00:00Z</dc:date>
+    <summary>Сводка</summary>
+  </entry>
+</feed>
