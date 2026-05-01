@@ -4,6 +4,8 @@
 
 > Альтернатива Feeder, Tenderhelp, RTS-Tender и платным сервисам мониторинга госзакупок. Если задача — видеть новые лоты по нескольким сохранённым поискам, расширения хватит.
 
+> Проект родился из обсуждения [«Какие есть RSS клиенты с уведомлением о новом контенте?»](https://qna.habr.com/q/1410604) на Хабр Q&A — Feeder обрезал длинные URL `zakupki.gov.ru`, Feedbro перестал поддерживаться в Chrome. Вместо очередного general-purpose RSS-клиента сделал узкоспециализированную утилиту под госзакупки.
+
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Chrome MV3](https://img.shields.io/badge/Chrome-Manifest%20V3-success)
 ![No tracking](https://img.shields.io/badge/tracking-none-brightgreen)
@@ -213,6 +215,7 @@ PR welcome. Простые задачи открыты в [issues](https://githu
 - Документация по 44-ФЗ: [zakupki.gov.ru/epz/main/public/document/view.html](https://zakupki.gov.ru/)
 - Реестр контрактов: zakupki.gov.ru → раздел «Контракты»
 - Реестр жалоб ФАС: zakupki.gov.ru → раздел «ФАС»
+- Тред-первоисточник: [Хабр Q&A — RSS-клиенты с уведомлениями](https://qna.habr.com/q/1410604)
 
 ## Ключевые слова
 
