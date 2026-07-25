@@ -105,7 +105,15 @@ export async function markSeen(urlKey, ids, limit) {
 
 export async function pushRecent(entries) {
   const cur = await getState();
-  const recent = [...entries, ...cur.recent].slice(0, cur.settings.maxRecent);
+  const seen = new Set();
+  const recent = [];
+  for (const entry of [...entries, ...cur.recent]) {
+    const key = entry.link || `${entry.feedId}:${entry.title}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    recent.push(entry);
+    if (recent.length >= cur.settings.maxRecent) break;
+  }
   await chrome.storage.local.set({ recent });
 }
 

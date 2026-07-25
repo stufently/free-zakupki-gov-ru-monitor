@@ -57,7 +57,7 @@ async function render() {
 
     for (const [feedTitle, items] of groups) {
       const group = document.createElement("li");
-      group.className = "group";
+      group.className = "group collapsed";
 
       const header = document.createElement("div");
       header.className = "group-header";
