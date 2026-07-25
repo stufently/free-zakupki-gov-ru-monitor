@@ -99,7 +99,18 @@ async function checkFeed(feed, state) {
   });
   if (!resp.ok) throw new Error("HTTP " + resp.status);
   const xml = await resp.text();
+  
+  console.log("[Zakupki Monitor] Fetched feed:", feed.url);
+  console.log("[Zakupki Monitor] Response length:", xml.length, "chars");
+  console.log("[Zakupki Monitor] First 500 chars:", xml.slice(0, 500));
+  
   const parsed = parseFeed(xml);
+  
+  console.log("[Zakupki Monitor] Parsed:", {
+    channelTitle: parsed.channelTitle,
+    itemsCount: parsed.items.length,
+    firstItem: parsed.items[0]
+  });
 
   const key = feedKey(feed);
   // first-run определяется явным флагом initialized, а не пустотой seenIds.
@@ -107,6 +118,12 @@ async function checkFeed(feed, state) {
   const wasInitialized = !!state.initialized[key];
   const seen = new Set(state.seenIds[key] || []);
   const fresh = parsed.items.filter((it) => it.id && !seen.has(it.id));
+  
+  console.log("[Zakupki Monitor] State:", {
+    wasInitialized,
+    seenCount: seen.size,
+    freshCount: fresh.length
+  });
 
   // Помечаем как инициализированную после ЛЮБОЙ успешной проверки (даже если items=0).
   if (!wasInitialized) {
@@ -136,10 +153,12 @@ async function checkFeed(feed, state) {
   if (!wasInitialized) {
     const firstRunCap = 10;
     const recentItems = enriched.slice(0, firstRunCap);
+    console.log("[Zakupki Monitor] First run: adding", recentItems.length, "items to recent");
     await pushRecent(recentItems);
     return [];
   }
 
+  console.log("[Zakupki Monitor] Adding", enriched.length, "new items to recent");
   await pushRecent(enriched);
   return enriched;
 }
