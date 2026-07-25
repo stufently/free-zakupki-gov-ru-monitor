@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Бесплатный мониторинг госзакупок (zakupki.gov.ru)",
   "short_name": "Zakupki Monitor",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "default_locale": "ru",
   "description": "Бесплатный мониторинг закупок на zakupki.gov.ru через RSS. Уведомления о новых тендерах без регистрации и подписок.",
   "minimum_chrome_version": "119",
