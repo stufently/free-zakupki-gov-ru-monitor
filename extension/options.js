@@ -1,4 +1,4 @@
-import { getState, setFeeds, setSettings } from "./storage.js";
+import { getState, setFeeds, setSettings, resetFeed, resetAllFeeds, feedKey } from "./storage.js";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -29,6 +29,11 @@ async function init() {
 
   $("#save").addEventListener("click", save);
   $("#check-now").addEventListener("click", checkNow);
+  $("#reset-all").addEventListener("click", async () => {
+    if (!confirm("Сбросить состояние всех лент? При следующей проверке вы увидите последние записи из каждой ленты (без уведомлений).")) return;
+    await resetAllFeeds();
+    setStatus("Состояние всех лент сброшено ✓");
+  });
 }
 
 function addFeedRow(feed) {
@@ -38,6 +43,13 @@ function addFeedRow(feed) {
   row.querySelector(".title").value = feed.title || "";
   row.querySelector(".url").value = feed.url || "";
   row.querySelector(".enabled input").checked = feed.enabled !== false;
+  row.querySelector(".reset").addEventListener("click", async () => {
+    const url = row.querySelector(".url").value.trim();
+    if (!url) return;
+    const key = feedKey({ url });
+    await resetFeed(key);
+    setStatus(`Лента «${feed.title || url.slice(0, 40)}» сброшена ✓`);
+  });
   row.querySelector(".remove").addEventListener("click", () => row.remove());
   $("#feeds").appendChild(row);
 }

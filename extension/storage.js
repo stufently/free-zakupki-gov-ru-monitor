@@ -112,3 +112,17 @@ export async function pushRecent(entries) {
 export async function clearRecent() {
   await chrome.storage.local.set({ recent: [] });
 }
+
+export async function resetFeed(urlKey) {
+  if (!urlKey) return;
+  const all = await chrome.storage.local.get(["seenIds", "initialized"]);
+  const seen = all.seenIds || {};
+  const init = all.initialized || {};
+  delete seen[urlKey];
+  delete init[urlKey];
+  await chrome.storage.local.set({ seenIds: seen, initialized: init });
+}
+
+export async function resetAllFeeds() {
+  await chrome.storage.local.set({ seenIds: {}, initialized: {} });
+}
