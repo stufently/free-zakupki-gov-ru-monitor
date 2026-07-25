@@ -47,20 +47,48 @@ async function render() {
     li.textContent = "Пока нет новых записей. Расширение проверит ленты по расписанию.";
     list.appendChild(li);
   } else {
-    state.recent.forEach((item) => {
-      const li = document.createElement("li");
-      li.innerHTML = `
-        <div class="title"></div>
-        <div class="meta"><span class="feed"></span><span class="date"></span></div>
-      `;
-      li.querySelector(".title").textContent = item.title;
-      li.querySelector(".feed").textContent = item.feedTitle || "";
-      li.querySelector(".date").textContent = formatDate(item.pubDate || item.foundAt);
-      li.addEventListener("click", () => {
-        if (item.link) chrome.tabs.create({ url: item.link });
+    // Группируем записи по ленте
+    const groups = new Map();
+    for (const item of state.recent) {
+      const key = item.feedTitle || "Без названия";
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(item);
+    }
+
+    for (const [feedTitle, items] of groups) {
+      const group = document.createElement("li");
+      group.className = "group";
+
+      const header = document.createElement("div");
+      header.className = "group-header";
+      header.innerHTML = `<span class="group-title"></span><span class="group-count"></span>`;
+      header.querySelector(".group-title").textContent = feedTitle;
+      header.querySelector(".group-count").textContent = items.length;
+      header.addEventListener("click", () => {
+        group.classList.toggle("collapsed");
       });
-      list.appendChild(li);
-    });
+
+      const sublist = document.createElement("ul");
+      sublist.className = "group-items";
+
+      for (const item of items) {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <div class="title"></div>
+          <div class="meta"><span class="date"></span></div>
+        `;
+        li.querySelector(".title").textContent = item.title;
+        li.querySelector(".date").textContent = formatDate(item.pubDate || item.foundAt);
+        li.addEventListener("click", () => {
+          if (item.link) chrome.tabs.create({ url: item.link });
+        });
+        sublist.appendChild(li);
+      }
+
+      group.appendChild(header);
+      group.appendChild(sublist);
+      list.appendChild(group);
+    }
   }
 
   $("#count").textContent = `Лент: ${state.feeds.length}, в списке: ${state.recent.length}`;

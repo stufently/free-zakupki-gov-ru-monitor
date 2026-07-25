@@ -39,6 +39,47 @@ li .title { font-size: 13px; line-height: 1.35; color: #1971c2; }
 li .meta { font-size: 11px; color: #888; margin-top: 4px; display: flex; justify-content: space-between; }
 li.empty { color: #888; cursor: default; text-align: center; padding: 24px 12px; font-size: 13px; }
 li.empty:hover { background: transparent; }
+
+/* Группы лент */
+li.group { padding: 0; cursor: default; }
+li.group:hover { background: transparent; }
+.group-header {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: #edf2f7;
+  border-bottom: 1px solid #dde3ea;
+  cursor: pointer;
+  user-select: none;
+}
+.group-header:hover { background: #e2e8f0; }
+.group-header::before {
+  content: "▼";
+  font-size: 9px;
+  color: #888;
+  margin-right: 6px;
+  transition: transform 0.15s;
+}
+.group.collapsed .group-header::before { transform: rotate(-90deg); }
+.group-title {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.group-count {
+  font-size: 11px;
+  color: #888;
+  font-weight: normal;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+.group-items { list-style: none; margin: 0; padding: 0; }
+.group.collapsed .group-items { display: none; }
+.group-items li { padding: 8px 12px 8px 24px; }
 footer {
   display: flex;
   justify-content: space-between;
