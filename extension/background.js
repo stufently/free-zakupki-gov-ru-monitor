@@ -122,9 +122,6 @@ async function checkFeed(feed, state) {
   // в этом проходе не считали те же item'ы fresh снова.
   state.seenIds[key] = Array.from(new Set([...(state.seenIds[key] || []), ...ids]));
 
-  // Первый запуск — не уведомляем (просто запоминаем текущее состояние).
-  if (!wasInitialized) return [];
-
   const enriched = fresh.map((it) => ({
     feedId: feed.id,
     feedTitle: feed.title || parsed.channelTitle,
@@ -134,6 +131,15 @@ async function checkFeed(feed, state) {
     description: it.description,
     foundAt: new Date().toISOString(),
   }));
+
+  // Первый запуск — добавляем в recent, но не уведомляем (чтобы не спамить старыми).
+  if (!wasInitialized) {
+    const firstRunCap = 10;
+    const recentItems = enriched.slice(0, firstRunCap);
+    await pushRecent(recentItems);
+    return [];
+  }
+
   await pushRecent(enriched);
   return enriched;
 }
