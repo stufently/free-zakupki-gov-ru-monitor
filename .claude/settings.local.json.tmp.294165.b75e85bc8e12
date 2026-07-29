@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git checkout *)",
+      "Bash(git -c user.name=stufently commit -q -m 'Release automatically on manifest version bump' -m 'Тег vX.Y.Z и GitHub Release создаются самим workflow при пуше в main, *)"
+    ]
+  }
+}
