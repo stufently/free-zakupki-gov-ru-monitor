@@ -171,6 +171,71 @@ Source code: https://github.com/stufently/free-zakupki-gov-ru-monitor
 
 ---
 
+## Автоматическая выкладка новой версии (CI)
+
+После bump'а `version` в манифесте workflow [`release.yml`](../.github/workflows/release.yml)
+собирает ZIP, публикует GitHub Release и **сам заливает сборку в Store**, отправляя
+её на ревью. Логика вынесена в [`scripts/cws-deploy.sh`](../scripts/cws-deploy.sh) —
+её же можно запустить руками, если CI недоступен.
+
+Пока секреты не заданы, шаг выкладки печатает `notice` и завершается успешно:
+до появления аккаунта разработчика релизы не должны краснеть.
+
+### Что важно знать заранее
+
+- **Используется API v2** (`chromewebstore.googleapis.com/v2`). V1
+  (`/chromewebstore/v1.1/`) объявлен устаревшим и работает **только до 15 октября
+  2026 года** — на нём написано большинство готовых GitHub Actions для Store, и
+  после этой даты они перестанут работать.
+- **Сам товар заводится только руками.** API v2 умеет загрузить версию в уже
+  существующий товар и опубликовать его, но создать товар и заполнить карточку с
+  полями Privacy — нет. Один раз это делается в дашборде, дальше автоматика
+  справляется сама, включая первую отправку на ревью.
+- **Consent screen должен быть в статусе Production.** Если оставить `Testing`,
+  `refresh_token` протухнет ровно через 7 дней, и выкладка начнёт падать с
+  `invalid_grant`. Скрипт распознаёт этот случай и пишет причину прямо в лог.
+- **Публикация идёт с текущими настройками видимости.** Если менять видимость в
+  дашборде, API не сможет публиковать, пока хотя бы раз не опубликуете вручную.
+
+### Секреты репозитория
+
+`Settings → Secrets and variables → Actions → New repository secret`:
+
+| Секрет | Где взять |
+|---|---|
+| `CWS_PUBLISHER_ID` | Дашборд Store, раздел **Publisher → Settings**. |
+| `CWS_ITEM_ID` | ID расширения — в адресе карточки в дашборде, 32 буквы. |
+| `CWS_CLIENT_ID` | Google Cloud Console → Credentials → OAuth client ID (тип **Web application**). |
+| `CWS_CLIENT_SECRET` | Там же, рядом с client ID. |
+| `CWS_REFRESH_TOKEN` | Через [OAuth Playground](https://developers.google.com/oauthplayground) — порядок ниже. |
+
+### Как получить `CWS_REFRESH_TOKEN`
+
+1. В [Google Cloud Console](https://console.cloud.google.com) создать проект и
+   включить в нём **Chrome Web Store API**.
+2. OAuth consent screen: тип **External**, заполнить обязательные поля и
+   **опубликовать приложение (Production)** — иначе токен проживёт 7 дней.
+3. Credentials → Create credentials → OAuth client ID → **Web application**,
+   в Authorized redirect URIs добавить `https://developers.google.com/oauthplayground`.
+4. Открыть [OAuth Playground](https://developers.google.com/oauthplayground),
+   шестерёнка → «Use your own OAuth credentials», вставить client ID и secret.
+5. В поле своих scope вписать `https://www.googleapis.com/auth/chromewebstore`,
+   нажать «Authorize APIs» и войти **тем аккаунтом, которому принадлежит
+   расширение** (он может отличаться от владельца проекта в Cloud Console).
+6. «Exchange authorization code for tokens» → скопировать `refresh_token`.
+
+### Ручной запуск
+
+Вкладка Actions → Release → Run workflow, выпадающий список «Что сделать»:
+
+| Режим | Когда нужен |
+|---|---|
+| `upload-and-publish` | По умолчанию. То же, что происходит само после bump'а версии. |
+| `upload-only` | Залить черновик и посмотреть его в дашборде глазами до отправки на ревью. |
+| `publish-only` | Пакет уже принят, а публикация упала. Повторная загрузка той же версии была бы отклонена как неувеличенная, поэтому повторяется только публикация. |
+
+---
+
 ## Чек-лист перед отправкой на ревью
 
 - [ ] Аккаунт разработчика Chrome Web Store (разовый взнос $5).

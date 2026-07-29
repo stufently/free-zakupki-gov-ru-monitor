@@ -14,6 +14,18 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "Что сделать в Chrome Web Store"
+        type: choice
+        default: upload-and-publish
+        options:
+          # publish-only нужен не для красоты: если пакет уже принят, а publish
+          # упал, повторная загрузка той же версии будет отклонена как
+          # неувеличенная — и повторить выкладку целиком стало бы нечем.
+          - upload-and-publish
+          - upload-only
+          - publish-only
 
 permissions:
   contents: write
@@ -21,6 +33,9 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      should_release: ${{ steps.ver.outputs.should_release }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -61,6 +76,12 @@ jobs:
         working-directory: tests
         run: node check-sw.mjs
 
+      # Гоняем здесь, а не только в test.yml: этот же скрипт через несколько
+      # шагов пойдёт выкладывать версию в Store.
+      - name: Test Chrome Web Store deploy script
+        working-directory: tests
+        run: node cws-deploy.test.mjs
+
       - name: Build ZIP
         run: |
           mkdir -p dist
@@ -100,7 +121,65 @@ jobs:
 
             Если предпочитаете git: `git clone https://github.com/stufently/free-zakupki-gov-ru-monitor.git` и выберите подпапку `extension/`.
 
+
             > **Важно:** с 4 июля 2026 года zakupki.gov.ru работает на TLS-сертификате НУЦ Минцифры,
             > которому Chrome не доверяет по умолчанию. Если ленты не читаются — установите корневые
             > сертификаты по инструкции [gosuslugi.ru/crt](https://www.gosuslugi.ru/crt)
             > либо пользуйтесь Яндекс.Браузером или Атомом.
+
+  # Выкладка в Chrome Web Store отдельной job'ой, а не шагом в build: сборка и
+  # GitHub Release не должны зависеть от доступности стороннего API. Если Store
+  # ответит отказом, релиз на GitHub уже опубликован и виден.
+  store:
+    name: Chrome Web Store
+    needs: build
+    # workflow_dispatch в условии не для удобства: если выкладка упала (протух
+    # токен, Store ответил отказом), тег на эту версию уже создан, should_release
+    # навсегда стал false — и без ручного запуска повторить выкладку было бы
+    # нечем, кроме bump'а версии на пустом месте.
+    if: >-
+      needs.build.outputs.should_release == 'true'
+      || startsWith(github.ref, 'refs/tags/v')
+      || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # fetchStatus отдаёт состояние последней загрузки товара целиком, а не
+    # конкретного вызова. Два одновременных запуска опрашивали бы чужую загрузку
+    # и могли опубликовать не ту ревизию. cancel-in-progress: false — прерывать
+    # выкладку на полпути хуже, чем подождать.
+    concurrency:
+      group: chrome-web-store
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download built ZIP
+        uses: actions/download-artifact@v7
+        with:
+          name: extension-zip
+          path: dist
+
+      - name: Upload to Chrome Web Store
+        # Секреты объявлены на шаге, а не на job: checkout и download-artifact в
+        # них не нуждаются, а лишний step с доступом к refresh_token — лишняя
+        # поверхность для утечки.
+        env:
+          CWS_PUBLISHER_ID: ${{ secrets.CWS_PUBLISHER_ID }}
+          CWS_ITEM_ID: ${{ secrets.CWS_ITEM_ID }}
+          CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+          CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+          CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+          # На push поле пустое — обе проверки дают true, то есть загрузить и
+          # опубликовать. Режим выбирается только при ручном запуске.
+          CWS_UPLOAD: ${{ github.event.inputs.mode != 'publish-only' }}
+          CWS_PUBLISH: ${{ github.event.inputs.mode != 'upload-only' }}
+        run: |
+          # Секреты нельзя проверить в `if:` на уровне job — контекст secrets там
+          # недоступен. Поэтому выходим здесь: пока аккаунта разработчика нет,
+          # workflow должен оставаться зелёным, а не падать на каждом релизе.
+          if [ -z "$CWS_REFRESH_TOKEN" ]; then
+            echo "::notice::Секреты Chrome Web Store не заданы — выкладка пропущена. Сборка и GitHub Release не затронуты."
+            exit 0
+          fi
+          bash scripts/cws-deploy.sh dist/free-zakupki-gov-ru-monitor-${{ needs.build.outputs.version }}.zip
