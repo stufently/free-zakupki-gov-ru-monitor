@@ -185,6 +185,49 @@ function fixture(name) {
   assert(feed.channelTitle === "Лента без XML-пролога", `channel title: ${feed.channelTitle}`);
 }
 
+// --- Test 16: РЕАЛЬНАЯ лента ЕИС (снята 29.07.2026 через российский прокси).
+// До 0.2.0 парсер вообще не проверялся на живых данных — только на придуманных
+// фикстурах, из-за чего отказ 0.1.0 прожил три месяца незамеченным.
+{
+  const base = "https://zakupki.gov.ru/epz/order/extendedsearch/rss.html?searchString=охрана";
+  const feed = parseFeed(fixture("real-eis-rss.xml"), base);
+
+  assert(feed.items.length === 5, `real feed items = ${feed.items.length}`);
+
+  // В лентах ЕИС <guid> нет вообще, поэтому идентичность держится на <link>
+  // с regNumber. Если это сломается, дедупликация начнёт слать дубли уведомлений.
+  assert(
+    feed.items.every((i) => i.id && i.id === i.link),
+    "real feed: id falls back to <link> (no <guid> in EIS feeds)"
+  );
+  assert(
+    feed.items.every((i) => /^https:\/\/zakupki\.gov\.ru\/.*regNumber=\d+/.test(i.link)),
+    "real feed: every link is absolute and carries regNumber"
+  );
+  assert(
+    new Set(feed.items.map((i) => i.id)).size === feed.items.length,
+    "real feed: ids are unique — no dedup collisions"
+  );
+  assert(
+    feed.items.every((i) => i.pubDate && !isNaN(new Date(i.pubDate).getTime())),
+    "real feed: pubDate present and parseable"
+  );
+  // description приходит с двойным кодированием (&lt;b&gt;), после разбора
+  // не должно остаться ни тегов, ни entity — иначе они полезут в уведомление.
+  assert(
+    feed.items.every((i) => !/<[a-z/]/i.test(i.description || "")),
+    "real feed: no HTML tags left in description"
+  );
+  assert(
+    feed.items.every((i) => !/&(lt|gt|amp|nbsp|quot);/.test(i.description || "")),
+    "real feed: no leftover entities in description"
+  );
+  assert(
+    feed.channelTitle === "Результаты поиска в реестре заказов и закупок",
+    `real feed channel title: ${feed.channelTitle}`
+  );
+}
+
 console.log(`\nPassed: ${pass}`);
 console.log(`Failed: ${fail}`);
 if (fail > 0) {
