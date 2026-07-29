@@ -249,6 +249,8 @@ function fixture(name) {
     "https://example.com/feed.rss",             // чужой сайт
     "https://zakupki.gov.ru.evil.com/feed.rss", // хост лишь начинается с нужного
     "https://evilzakupki.gov.ru/feed.rss",      // без точки перед доменом — другой хост
+    "https://zakupki.gov.ru@evil.com/feed.rss", // нужный домен в userinfo, а не в хосте
+    "https://zаkupki.gov.ru/feed.rss",          // кириллическая «а»: другой хост после punycode
     "javascript:alert(1)",                      // не URL ленты вовсе
     "не ссылка",
     "",

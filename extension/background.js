@@ -308,6 +308,11 @@ async function fetchFeedText(url) {
       throw new NetworkError(String((e && e.message) || e));
     }
 
+    // Редирект мог увести с портала: проверка адреса до запроса этого не ловит,
+    // переходы выполняет сам браузер. resp.url — финальный адрес после всех
+    // переходов; если он не с портала, ответ не читаем и не разбираем.
+    if (resp.url && !isAllowedFeedUrl(resp.url)) throw new ForbiddenUrlError(resp.url);
+
     if (!resp.ok) throw new HttpError(resp.status, resp.statusText);
 
     const declared = Number(resp.headers.get("content-length"));
