@@ -35,6 +35,10 @@ export function feedKey(feed) {
     const u = new URL(raw);
     u.hostname = u.hostname.toLowerCase();
     u.pathname = u.pathname.replace(/\/+$/, "") || "/";
+    // Якорь на сервер не уходит и ленту не меняет: с ним один и тот же адрес
+    // дал бы два ключа, то есть две «разные» ленты с одинаковым содержимым и
+    // сдвоенными уведомлениями.
+    u.hash = "";
     return u.toString();
   } catch {
     return raw;
@@ -56,6 +60,10 @@ export function isAllowedFeedUrl(url) {
     return false;
   }
   if (u.protocol !== "https:") return false;
+  // Логин/пароль в адресе ленте не нужны, а выглядят ровно как приём маскировки
+  // чужого хоста под нужный. Нестандартный порт — тоже не адрес RSS портала.
+  if (u.username || u.password) return false;
+  if (u.port && u.port !== "443") return false;
   const h = u.hostname.toLowerCase();
   return h === FEED_HOST || h.endsWith("." + FEED_HOST);
 }

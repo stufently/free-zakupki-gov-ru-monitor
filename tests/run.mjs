@@ -251,6 +251,8 @@ function fixture(name) {
     "https://evilzakupki.gov.ru/feed.rss",      // без точки перед доменом — другой хост
     "https://zakupki.gov.ru@evil.com/feed.rss", // нужный домен в userinfo, а не в хосте
     "https://zаkupki.gov.ru/feed.rss",          // кириллическая «а»: другой хост после punycode
+    "https://user:pass@zakupki.gov.ru/feed.rss", // логин/пароль в адресе ленты не бывает
+    "https://zakupki.gov.ru:444/feed.rss",      // нестандартный порт
     "javascript:alert(1)",                      // не URL ленты вовсе
     "не ссылка",
     "",
@@ -260,6 +262,18 @@ function fixture(name) {
   for (const u of denied) {
     assert(isAllowedFeedUrl(u) === false, `должен быть запрещён: ${JSON.stringify(u)}`);
   }
+
+  // Явный порт 443 — это и есть https по умолчанию, адрес остаётся тем же.
+  assert(isAllowedFeedUrl("https://zakupki.gov.ru:443/feed.rss") === true, "порт 443 = обычный https");
+
+  // Якорь не должен плодить «разные» ленты из одного адреса.
+  const { feedKey } = await import(join(here, "..", "extension", "storage.js"));
+  const base = "https://zakupki.gov.ru/epz/order/extendedsearch/rss.html?searchString=x";
+  assert(
+    feedKey({ url: base + "#a" }) === feedKey({ url: base + "#b" }),
+    "адреса, различающиеся только якорем, должны давать один ключ ленты"
+  );
+  assert(feedKey({ url: base }) === feedKey({ url: base + "#a" }), "якорь не должен менять ключ ленты");
 }
 
 console.log(`\nPassed: ${pass}`);
