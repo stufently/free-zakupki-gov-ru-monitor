@@ -5,6 +5,7 @@
 //                          (не feed.id!), чтобы при правке URL автоматически считать
 //                          ленту новой и не спамить старыми guid'ами.
 //   recent[]             — последние найденные записи (для popup)
+//   status{urlKey: {..}} — диагностика последней проверки каждой ленты
 //   settings             — расписание и параметры уведомлений
 
 const DEFAULTS = {
@@ -12,6 +13,10 @@ const DEFAULTS = {
   seenIds: {},
   initialized: {}, // {urlKey: true} — флаг "первый запуск завершён"
   recent: [],
+  // {urlKey: {lastAttemptAt, lastSuccessAt, lastItemCount, lastError:{kind,message,at}}}
+  // Без этого фоновые сбои были невидимы: пользователь видел «новых нет»
+  // и при упавшем парсере, и при недоверенном TLS-сертификате.
+  status: {},
   settings: {
     intervalMinutes: 10, // default — каждые 10 минут (минимум Chrome alarms = 1 мин)
     maxRecent: 50,
@@ -43,8 +48,19 @@ export async function getState() {
     seenIds: all.seenIds || DEFAULTS.seenIds,
     initialized: all.initialized || DEFAULTS.initialized,
     recent: all.recent || DEFAULTS.recent,
+    status: all.status || DEFAULTS.status,
     settings: { ...DEFAULTS.settings, ...(all.settings || {}) },
   };
+}
+
+// Мержит патч в диагностику ленты. Читаем-пишем весь объект status целиком:
+// проверки лент сериализованы через inFlight в background.js, гонки нет.
+export async function setFeedStatus(urlKey, patch) {
+  if (!urlKey) return;
+  const all = await chrome.storage.local.get("status");
+  const status = all.status || {};
+  status[urlKey] = { ...(status[urlKey] || {}), ...patch };
+  await chrome.storage.local.set({ status });
 }
 
 export async function setFeeds(feeds) {
@@ -59,19 +75,23 @@ export async function setFeeds(feeds) {
     seenKeys.add(k);
     deduped.push(f);
   }
-  // Подчищаем seenIds + initialized от ключей, которых больше нет среди лент.
-  const all = await chrome.storage.local.get(["seenIds", "initialized"]);
+  // Подчищаем seenIds + initialized + status от ключей, которых больше нет среди лент.
+  const all = await chrome.storage.local.get(["seenIds", "initialized", "status"]);
   const seen = all.seenIds || {};
   const init = all.initialized || {};
+  const status = all.status || {};
   const liveKeys = new Set(deduped.map(feedKey).filter(Boolean));
   const cleanedSeen = {};
   const cleanedInit = {};
+  const cleanedStatus = {};
   for (const k of Object.keys(seen)) if (liveKeys.has(k)) cleanedSeen[k] = seen[k];
   for (const k of Object.keys(init)) if (liveKeys.has(k)) cleanedInit[k] = init[k];
+  for (const k of Object.keys(status)) if (liveKeys.has(k)) cleanedStatus[k] = status[k];
   await chrome.storage.local.set({
     feeds: deduped,
     seenIds: cleanedSeen,
     initialized: cleanedInit,
+    status: cleanedStatus,
   });
 }
 

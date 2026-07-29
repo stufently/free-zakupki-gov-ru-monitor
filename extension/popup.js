@@ -1,4 +1,4 @@
-import { getState, clearRecent } from "./storage.js";
+import { getState, clearRecent, feedKey } from "./storage.js";
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -19,8 +19,10 @@ $("#open-options").addEventListener("click", () => chrome.runtime.openOptionsPag
 
 $("#clear").addEventListener("click", async () => {
   await clearRecent();
+  // Не стираем badge напрямую: если какая-то лента сломана, на нём должен
+  // остаться красный «!». Пересчёт делает service worker.
   try {
-    await chrome.action.setBadgeText({ text: "" });
+    await chrome.runtime.sendMessage({ type: "refreshBadge" });
   } catch {
     // ignore
   }
@@ -41,10 +43,31 @@ async function render() {
     return;
   }
 
+  // Сломанные ленты показываем ПЕРЕД списком. Раньше отказ фида был неотличим
+  // от «ничего нового»: ошибки копились только в консоли service worker'а.
+  const broken = state.feeds.filter((f) => {
+    if (!f.url || f.enabled === false) return false;
+    const st = state.status[feedKey(f)];
+    return st && st.lastError;
+  });
+
+  for (const feed of broken) {
+    const st = state.status[feedKey(feed)];
+    const li = document.createElement("li");
+    li.className = "problem";
+    li.innerHTML = `<div class="title"></div><div class="meta"><span class="feed"></span></div>`;
+    li.querySelector(".title").textContent = `⚠ ${feed.title || feed.url}`;
+    li.querySelector(".feed").textContent = st.lastError.message;
+    li.addEventListener("click", () => chrome.runtime.openOptionsPage());
+    list.appendChild(li);
+  }
+
   if (state.recent.length === 0) {
     const li = document.createElement("li");
     li.className = "empty";
-    li.textContent = "Пока нет новых записей. Расширение проверит ленты по расписанию.";
+    li.textContent = broken.length
+      ? "Новых записей нет. Разберитесь с ошибками выше — возможно, ленты не читаются."
+      : "Пока нет новых записей. Расширение проверит ленты по расписанию.";
     list.appendChild(li);
   } else {
     state.recent.forEach((item) => {

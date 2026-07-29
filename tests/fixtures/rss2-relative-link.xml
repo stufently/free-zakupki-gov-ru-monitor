@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Лента с относительными ссылками</title>
+    <item>
+      <title>Закупка с относительной ссылкой</title>
+      <link>/epz/order/notice/view.html?regNumber=0173100007725000123</link>
+      <guid>rel-1</guid>
+    </item>
+    <item>
+      <title>Закупка с абсолютной ссылкой</title>
+      <link>https://zakupki.gov.ru/epz/order/notice/view.html?regNumber=999</link>
+      <guid>abs-1</guid>
+    </item>
+  </channel>
+</rss>

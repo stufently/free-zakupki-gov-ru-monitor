@@ -56,3 +56,9 @@ footer button {
   font-size: 12px;
 }
 footer button:hover { text-decoration: underline; }
+
+/* Сломанные ленты — показываются над списком записей */
+li.problem { background: #fff5f5; border-left: 3px solid #c92a2a; }
+li.problem:hover { background: #ffe3e3; }
+li.problem .title { color: #c92a2a; font-weight: 600; }
+li.problem .meta { color: #a53434; }

@@ -76,6 +76,115 @@ function fixture(name) {
   assert(threw, "throws on empty input");
 }
 
+// --- Test 6: относительные <link> разворачиваются относительно URL фида.
+// До 0.2.0 такая ссылка уезжала в chrome.tabs.create как есть и не открывалась.
+{
+  const base = "https://zakupki.gov.ru/epz/order/extendedsearch/rss.html?searchString=охрана";
+  const feed = parseFeed(fixture("rss2-relative-link.xml"), base);
+  assert(
+    feed.items[0].link === "https://zakupki.gov.ru/epz/order/notice/view.html?regNumber=0173100007725000123",
+    `relative link resolved: ${feed.items[0].link}`
+  );
+  assert(
+    feed.items[1].link === "https://zakupki.gov.ru/epz/order/notice/view.html?regNumber=999",
+    `absolute link untouched: ${feed.items[1].link}`
+  );
+}
+
+// --- Test 7: HTML вместо RSS должен падать с внятной ошибкой, а не давать items=[].
+// Молчаливый items=[] помечал ленту инициализированной, и уведомления не приходили никогда.
+{
+  let msg = "";
+  try {
+    parseFeed(fixture("html-error-page.xml"));
+  } catch (e) {
+    msg = String(e.message);
+  }
+  assert(/HTML/i.test(msg), `HTML page rejected with clear message, got: ${msg}`);
+}
+
+// --- Test 8: XML с чужим корнем — тоже ошибка, а не пустая лента
+{
+  let msg = "";
+  try {
+    parseFeed(fixture("not-a-feed.xml"));
+  } catch (e) {
+    msg = String(e.message);
+  }
+  assert(/RSS|Atom/i.test(msg), `non-feed XML rejected, got: ${msg}`);
+}
+
+// --- Test 9: валидный RSS без записей — это НЕ ошибка,
+// и заголовок канала берётся из channel, а не из первой записи
+{
+  const feed = parseFeed(fixture("rss2-empty-channel.xml"));
+  assert(feed.items.length === 0, `empty channel yields 0 items, got ${feed.items.length}`);
+  assert(feed.channelTitle === "Пустая лента", `channel title from channel: ${feed.channelTitle}`);
+}
+
+// --- Test 10: в RSS-фиде разбираются только <item>; <entry> игнорируется.
+// Раньше обе ветки выполнялись всегда и могли давать фантомные записи.
+{
+  const feed = parseFeed(fixture("rss2-with-stray-entry.xml"));
+  assert(feed.items.length === 1, `RSS parses only <item>, got ${feed.items.length}`);
+  assert(feed.items[0].id === "real-1", `real item kept: ${feed.items[0].id}`);
+  assert(
+    !feed.items.some((i) => i.id === "phantom-1"),
+    "stray <atom:entry> is not treated as an item"
+  );
+  assert(
+    feed.channelTitle === "RSS с посторонним entry",
+    `channel title not confused by atom:link: ${feed.channelTitle}`
+  );
+}
+
+// --- Test 11: заголовок канала не подменяется заголовком первой записи
+{
+  const feed = parseFeed(fixture("rss2-basic.xml"));
+  assert(feed.channelTitle === "Тестовый фид", `channel title stable: ${feed.channelTitle}`);
+  assert(feed.channelTitle !== feed.items[0].title, "channel title != first item title");
+}
+
+// --- Test 12: НАСТОЯЩАЯ HTML-страница (невалидная как XML) тоже распознаётся.
+// Предыдущая фикстура была намеренно XML-корректной и не проверяла главный случай:
+// у реального HTML5 незакрытые <meta>/<br>/<img>, и DOMParser отдал бы
+// бесполезное «Невалидный XML» вместо понятного объяснения.
+{
+  let msg = "";
+  try {
+    parseFeed(fixture("html-real-page.html.xml"));
+  } catch (e) {
+    msg = String(e.message);
+  }
+  assert(/HTML-страницу/i.test(msg), `real HTML5 page detected before XML parsing, got: ${msg}`);
+}
+
+// --- Test 13: <item>, вложенный в содержимое записи, не становится отдельной записью.
+// getElementsByTagName обходит всё поддерево, поэтому обход переведён на прямых потомков.
+{
+  const feed = parseFeed(fixture("rss2-nested-item.xml"));
+  assert(feed.items.length === 1, `nested <item> ignored, got ${feed.items.length} items`);
+  assert(feed.items[0].id === "real-1", `outer item kept: ${feed.items[0].id}`);
+  assert(!feed.items.some((i) => i.id === "phantom-1"), "nested item is not a separate entry");
+}
+
+// --- Test 14: RSS 1.0 (RDF), где item лежат рядом с channel, а не внутри него
+{
+  const feed = parseFeed(fixture("rdf-rss1.xml"));
+  assert(feed.channelTitle === "Лента RSS 1.0", `rdf channel title: ${feed.channelTitle}`);
+  assert(feed.items.length === 1, `rdf items count = ${feed.items.length}`);
+  assert(feed.items[0].title === "Закупка из RDF-ленты", `rdf item title: ${feed.items[0].title}`);
+  assert(feed.items[0].pubDate === "2026-07-20T09:00:00Z", `rdf dc:date: ${feed.items[0].pubDate}`);
+}
+
+// --- Test 15: лента без XML-пролога, у которой в описании встречается <html>,
+// не должна отвергаться как HTML-страница
+{
+  const feed = parseFeed(fixture("rss2-no-prolog-html-mention.xml"));
+  assert(feed.items.length === 1, `feed without prolog still parsed, got ${feed.items.length}`);
+  assert(feed.channelTitle === "Лента без XML-пролога", `channel title: ${feed.channelTitle}`);
+}
+
 console.log(`\nPassed: ${pass}`);
 console.log(`Failed: ${fail}`);
 if (fail > 0) {

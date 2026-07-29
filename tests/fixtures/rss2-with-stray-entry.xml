@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>RSS с посторонним entry</title>
+    <atom:link href="https://zakupki.gov.ru/self" rel="self" />
+    <item>
+      <title>Настоящая запись RSS</title>
+      <link>https://zakupki.gov.ru/real</link>
+      <guid>real-1</guid>
+    </item>
+    <atom:entry>
+      <title>Фантом, которого не должно быть в результатах</title>
+      <id>phantom-1</id>
+    </atom:entry>
+  </channel>
+</rss>
