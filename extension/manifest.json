@@ -1,12 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "Бесплатный мониторинг госзакупок (zakupki.gov.ru)",
+  "name": "__MSG_extName__",
   "short_name": "Zakupki Monitor",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "default_locale": "ru",
-  "description": "Бесплатный мониторинг закупок на zakupki.gov.ru через RSS. Уведомления о новых тендерах без регистрации и подписок.",
+  "description": "__MSG_extDescription__",
   "minimum_chrome_version": "119",
-  "permissions": ["alarms", "notifications", "storage"],
+  "permissions": ["alarms", "notifications", "storage", "offscreen"],
   "host_permissions": [
     "https://zakupki.gov.ru/*",
     "https://*.zakupki.gov.ru/*"

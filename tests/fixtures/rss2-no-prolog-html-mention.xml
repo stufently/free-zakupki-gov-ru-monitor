@@ -1,0 +1,11 @@
+<rss version="2.0">
+  <channel>
+    <title>Лента без XML-пролога</title>
+    <item>
+      <title>Закупка с HTML в описании</title>
+      <link>https://zakupki.gov.ru/x/1</link>
+      <guid>np-1</guid>
+      <description><![CDATA[<html><body>кусок разметки в описании</body></html>]]></description>
+    </item>
+  </channel>
+</rss>

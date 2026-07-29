@@ -15,9 +15,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "24"
 
       - name: Read version from manifest
         id: ver
@@ -25,11 +25,23 @@ jobs:
           VERSION=$(jq -r .version extension/manifest.json)
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+      - name: Verify tag matches manifest version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          MANIFEST=$(jq -r .version extension/manifest.json)
+          test "$TAG" = "$MANIFEST" \
+            || { echo "::error::тег v$TAG не совпадает с version=$MANIFEST в manifest.json"; exit 1; }
+
       - name: Run parser tests
         working-directory: tests
         run: |
-          npm install --silent --no-audit --no-fund
+          npm ci --silent --no-audit --no-fund
           node run.mjs
+
+      - name: Guard service worker
+        working-directory: tests
+        run: node check-sw.mjs
 
       - name: Build ZIP
         run: |
@@ -48,7 +60,7 @@ jobs:
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: dist/*.zip
           generate_release_notes: true

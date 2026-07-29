@@ -1,8 +1,10 @@
 {
   "extName": {
-    "message": "Бесплатный мониторинг госзакупок"
+    "message": "Бесплатный мониторинг госзакупок (zakupki.gov.ru)",
+    "description": "Название расширения в chrome://extensions и Chrome Web Store"
   },
   "extDescription": {
-    "message": "Мониторинг закупок на zakupki.gov.ru через RSS. Уведомления о новых тендерах без регистрации."
+    "message": "Бесплатный мониторинг закупок на zakupki.gov.ru через RSS. Уведомления о новых тендерах без регистрации и подписок.",
+    "description": "Краткое описание расширения"
   }
 }

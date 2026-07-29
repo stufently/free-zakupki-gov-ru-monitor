@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <title>RSS parser</title>
+</head>
+<body>
+  <!--
+    Невидимый offscreen-документ. Единственная задача — дать доступ к DOMParser,
+    которого нет в service worker MV3. Ничего не рендерит и не делает сетевых
+    запросов: fetch остаётся в background.js, сюда приходит уже готовый текст.
+  -->
+  <script src="offscreen.js" type="module"></script>
+</body>
+</html>

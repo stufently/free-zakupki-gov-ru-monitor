@@ -44,6 +44,23 @@
       <span id="status"></span>
     </section>
 
+    <section id="cert-help" hidden>
+      <h2>Лента не отвечает</h2>
+      <p class="hint">
+        Не удалось соединиться с zakupki.gov.ru. С 4 июля 2026 года портал работает
+        на TLS-сертификате НУЦ Минцифры России, которому Chrome, Edge и Brave не доверяют
+        по умолчанию — это самая частая причина такой ошибки. Тот же симптом дают
+        отсутствие сети, блокировка со стороны провайдера и сбой самого портала.
+      </p>
+      <p class="hint">
+        Проверьте: открывается ли <a href="https://zakupki.gov.ru/" target="_blank" rel="noopener">zakupki.gov.ru</a>
+        в обычной вкладке? Если браузер ругается на сертификат — установите корневые
+        сертификаты по инструкции
+        <a href="https://www.gosuslugi.ru/crt" target="_blank" rel="noopener">gosuslugi.ru/crt</a>
+        либо откройте портал в Яндекс.Браузере или Атоме, где они уже встроены.
+      </p>
+    </section>
+
     <footer>
       <p>
         Open source: <a href="https://github.com/stufently/free-zakupki-gov-ru-monitor" target="_blank" rel="noopener">github.com/stufently/free-zakupki-gov-ru-monitor</a>
@@ -52,11 +69,14 @@
   </main>
 
   <template id="feed-tpl">
-    <div class="feed">
-      <input type="text" class="title" placeholder="Название (например: Тендеры по Москве)" />
-      <input type="url" class="url" placeholder="https://zakupki.gov.ru/epz/order/extendedsearch/rss?…" />
-      <label class="enabled"><input type="checkbox" checked /> Активна</label>
-      <button type="button" class="remove">Удалить</button>
+    <div class="feed-row">
+      <div class="feed">
+        <input type="text" class="title" placeholder="Название (например: Тендеры по Москве)" />
+        <input type="url" class="url" placeholder="https://zakupki.gov.ru/epz/order/extendedsearch/rss.html?…" />
+        <label class="enabled"><input type="checkbox" checked /> Активна</label>
+        <button type="button" class="remove">Удалить</button>
+      </div>
+      <div class="feed-status"></div>
     </div>
   </template>
 
