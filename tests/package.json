@@ -7,7 +7,6 @@
     "test": "node run.mjs"
   },
   "dependencies": {
-    "@xmldom/xmldom": "^0.8.10",
-    "playwright-core": "^1.60.0"
+    "@xmldom/xmldom": "^0.8.10"
   }
 }

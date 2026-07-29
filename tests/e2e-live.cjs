@@ -12,14 +12,16 @@
 // На доверие сертификатам вне контейнера это не влияет.
 //
 // Запуск:
-//   docker run --rm -v "$PWD":/w -v "$PWD/tests":/e2e -w /e2e \
+//   docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
+//     -v "$PWD":/w -v "$PWD/tests":/e2e -w /e2e \
 //     -e PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
 //     -e PROXY_SERVER=http://ПРОКСИ:ПОРТ -e PROXY_USER=... -e PROXY_PASS=... \
 //     mcr.microsoft.com/playwright:v1.60.0-noble \
-//     sh -c 'npm i --silent playwright-core@1.60.0 && xvfb-run -a node e2e-live.cjs'
+//     sh -c 'npm i --silent --no-save playwright-core@1.60.0 && xvfb-run -a node e2e-live.cjs'
 //
 // Ожидаемый результат: первый прогон записывает ~200 id и НЕ шлёт уведомлений,
-// второй даёт totalNew=0. Последнее проверено 29.07.2026.
+// на втором известные записи не приходят повторно (totalNew либо 0, либо
+// единицы — лента живая). Последнее проверено 29.07.2026.
 
 const { chromium } = require('playwright-core');
 

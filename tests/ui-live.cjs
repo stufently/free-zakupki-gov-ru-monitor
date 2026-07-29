@@ -16,7 +16,7 @@
 //     -e PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
 //     -e PROXY_SERVER=http://ПРОКСИ:ПОРТ -e PROXY_USER=... -e PROXY_PASS=... \
 //     mcr.microsoft.com/playwright:v1.60.0-noble \
-//     sh -c 'npm i --silent playwright-core@1.60.0 && xvfb-run -a node ui-live.cjs'
+//     sh -c 'npm i --silent --no-save playwright-core@1.60.0 && xvfb-run -a node ui-live.cjs'
 
 const { chromium } = require('playwright-core');
 
