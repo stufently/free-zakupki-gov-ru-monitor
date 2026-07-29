@@ -29,6 +29,10 @@ jobs:
         working-directory: tests
         run: node check-sw.mjs
 
+      - name: Test Chrome Web Store deploy script (against a local mock)
+        working-directory: tests
+        run: node cws-deploy.test.mjs
+
       - name: Validate manifest.json
         run: |
           jq empty extension/manifest.json

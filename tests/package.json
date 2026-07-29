@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node run.mjs"
+    "test": "node run.mjs && node check-sw.mjs && node cws-deploy.test.mjs"
   },
   "dependencies": {
     "@xmldom/xmldom": "^0.8.10"
