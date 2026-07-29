@@ -9,6 +9,8 @@ import {
   pushRecent,
   setFeedStatus,
   feedKey,
+  isAllowedFeedUrl,
+  FEED_HOST,
 } from "./storage.js";
 
 const ALARM_NAME = "zakupki-monitor-poll";
@@ -259,13 +261,15 @@ async function checkFeed(feed, state, key) {
   // Первый запуск — не уведомляем (просто запоминаем текущее состояние).
   if (!wasInitialized) return [];
 
+  // description намеренно НЕ сохраняем: он не показывается ни в popup, ни в
+  // уведомлении, а это самое объёмное поле записи. Хранить содержимое страниц
+  // портала «на всякий случай» незачем — ни пользователю, ни ревью Store.
   const enriched = fresh.map((it) => ({
     feedId: feed.id,
     feedTitle: feed.title || parsed.channelTitle,
     title: it.title,
     link: it.link,
     pubDate: it.pubDate,
-    description: it.description,
     foundAt: new Date().toISOString(),
   }));
   await pushRecent(enriched);
@@ -273,6 +277,9 @@ async function checkFeed(feed, state, key) {
 }
 
 async function fetchFeedText(url) {
+  // Проверяем ДО запроса: иначе адрес из настроек ушёл бы на любой сайт.
+  if (!isAllowedFeedUrl(url)) throw new ForbiddenUrlError(url);
+
   const ctrl = new AbortController();
   // Таймер снимаем ТОЛЬКО после чтения тела. Если снять его сразу после
   // получения заголовков, медленное или бесконечное тело зависнет навсегда,
@@ -350,6 +357,13 @@ class HttpError extends Error {
 // Различить их из расширения нельзя — fetch отдаёт одинаковый TypeError.
 class NetworkError extends Error {}
 
+// Адрес вне портала закупок. Запрос не отправляется вообще.
+class ForbiddenUrlError extends Error {
+  constructor(url) {
+    super(`Адрес не с ${FEED_HOST}: ${url}`);
+  }
+}
+
 // Раскладывает исключение на машинно-читаемый kind + человеческий текст.
 // Специально НЕ утверждаем, что это сертификат: fetch отдаёт неотличимый
 // TypeError на DNS, offline, firewall и на недоверенный TLS. Формулировка
@@ -359,6 +373,12 @@ function describeError(e) {
 
   if (e && e.name === "AbortError") {
     return { kind: "timeout", message: `Превышено время ожидания (${FETCH_TIMEOUT_MS / 1000} с)` };
+  }
+  if (e instanceof ForbiddenUrlError) {
+    return {
+      kind: "url",
+      message: `Ссылка должна вести на https://${FEED_HOST} — запрос не отправлен`,
+    };
   }
   if (e instanceof HttpError || /^HTTP \d/.test(raw)) {
     return { kind: "http", message: raw };

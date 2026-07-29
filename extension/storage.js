@@ -41,6 +41,25 @@ export function feedKey(feed) {
   }
 }
 
+// Ленты разрешены только с портала закупок. host_permissions сами по себе
+// чужой домен не блокируют: fetch на него всё равно уйдёт, просто ответ
+// закроет CORS — то есть произвольный адрес из настроек превратился бы в
+// сетевой запрос на сторонний сайт. Проверка здесь делает границу настоящей,
+// а не декларативной, и даёт понятную ошибку вместо невнятного сетевого сбоя.
+export const FEED_HOST = "zakupki.gov.ru";
+
+export function isAllowedFeedUrl(url) {
+  let u;
+  try {
+    u = new URL(String(url || "").trim());
+  } catch {
+    return false;
+  }
+  if (u.protocol !== "https:") return false;
+  const h = u.hostname.toLowerCase();
+  return h === FEED_HOST || h.endsWith("." + FEED_HOST);
+}
+
 export async function getState() {
   const all = await chrome.storage.local.get(null);
   return {

@@ -159,6 +159,28 @@ const POLITE_MS = 2500;
   ok('сломанная лента даёт красный badge «!»',
      (await sw.evaluate(() => chrome.action.getBadgeText({}))) === '!');
 
+  // ---------- ЧУЖОЙ ДОМЕН ----------
+  // host_permissions запрос на сторонний сайт не блокируют, поэтому проверяем,
+  // что его не пускает наш собственный фильтр — и в настройках, и перед fetch.
+  await page.goto(`chrome-extension://${extId}/options.html`);
+  await page.waitForTimeout(700);
+  await page.locator('#feeds .feed-row').first().locator('.url').fill('https://example.com/feed.rss');
+  await page.locator('#save').click();
+  await page.waitForTimeout(600);
+  ok('чужой домен не сохраняется в настройках',
+     /example\.com/.test(await page.locator('#status').textContent() || '') &&
+     !(await page.evaluate(async () => (await chrome.storage.local.get('feeds')).feeds.some((f) => /example\.com/.test(f.url)))),
+     (await page.locator('#status').textContent() || '').trim());
+
+  const forbidden = await page.evaluate(async () => {
+    const bad = 'https://example.com/feed.rss';
+    await chrome.storage.local.set({ feeds: [{ id: 'evil', title: 'Чужой сайт', url: bad, enabled: true }] });
+    await chrome.runtime.sendMessage({ type: 'checkNow' });
+    await new Promise((r) => setTimeout(r, 600));
+    return (await chrome.storage.local.get('status')).status?.[bad]?.lastError || null;
+  });
+  ok('запрос на чужой домен не отправляется', forbidden?.kind === 'url', `${forbidden?.kind}: ${forbidden?.message}`);
+
   const pop2 = await ctx.newPage();
   await pop2.setViewportSize({ width: 360, height: 600 });
   await pop2.goto(`chrome-extension://${extId}/popup.html`);

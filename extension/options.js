@@ -1,4 +1,4 @@
-import { getState, setFeeds, setSettings, feedKey } from "./storage.js";
+import { getState, setFeeds, setSettings, feedKey, isAllowedFeedUrl, FEED_HOST } from "./storage.js";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -85,6 +85,14 @@ async function save() {
     }))
     .filter((f) => f.url);
 
+  // Чужой адрес отсекаем здесь, а не после первой проверки: так пользователь
+  // видит причину сразу, и запрос на сторонний сайт не уходит вовсе.
+  const wrong = feeds.filter((f) => !isAllowedFeedUrl(f.url));
+  if (wrong.length > 0) {
+    setStatus(`Ссылка должна вести на https://${FEED_HOST} — не сохранено: ${wrong[0].url}`);
+    return false;
+  }
+
   let intervalMinutes = parseInt($("#interval").value, 10);
   if (!Number.isFinite(intervalMinutes) || intervalMinutes < 1) intervalMinutes = 10;
   if (intervalMinutes > 10080) intervalMinutes = 10080; // 7 дней
@@ -95,11 +103,13 @@ async function save() {
   // Ленту могли выключить или удалить — badge с ошибкой должен это учесть.
   await chrome.runtime.sendMessage({ type: "refreshBadge" });
   setStatus("Сохранено ✓");
+  return true;
 }
 
 async function checkNow() {
   setStatus("Проверяю…");
-  await save();
+  // Не сохранилось — значит адрес не с портала; сообщение уже показано.
+  if ((await save()) !== true) return;
   const res = await chrome.runtime.sendMessage({ type: "checkNow" });
   if (!res || !res.ok) {
     setStatus("Ошибка: " + (res?.error || "неизвестно"));

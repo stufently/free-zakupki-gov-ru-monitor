@@ -228,6 +228,38 @@ function fixture(name) {
   );
 }
 
+// ---- 17. Допуск адресов лент -------------------------------------------
+// host_permissions чужой домен не блокируют: fetch туда уйдёт, ответ просто
+// закроет CORS. Значит адрес из настроек — это то, что расширение реально
+// пойдёт запрашивать, и фильтр должен быть настоящим.
+{
+  const { isAllowedFeedUrl } = await import(join(here, "..", "extension", "storage.js"));
+
+  const allowed = [
+    "https://zakupki.gov.ru/epz/order/extendedsearch/rss.html?searchString=охрана",
+    "https://ZAKUPKI.GOV.RU/epz/order/extendedsearch/rss.html", // регистр хоста не важен
+    "https://old.zakupki.gov.ru/feed.rss", // поддомен разрешён host_permissions
+  ];
+  for (const u of allowed) {
+    assert(isAllowedFeedUrl(u) === true, `должен быть разрешён: ${u}`);
+  }
+
+  const denied = [
+    "http://zakupki.gov.ru/feed.rss",           // только https
+    "https://example.com/feed.rss",             // чужой сайт
+    "https://zakupki.gov.ru.evil.com/feed.rss", // хост лишь начинается с нужного
+    "https://evilzakupki.gov.ru/feed.rss",      // без точки перед доменом — другой хост
+    "javascript:alert(1)",                      // не URL ленты вовсе
+    "не ссылка",
+    "",
+    null,
+    undefined,
+  ];
+  for (const u of denied) {
+    assert(isAllowedFeedUrl(u) === false, `должен быть запрещён: ${JSON.stringify(u)}`);
+  }
+}
+
 console.log(`\nPassed: ${pass}`);
 console.log(`Failed: ${fail}`);
 if (fail > 0) {
