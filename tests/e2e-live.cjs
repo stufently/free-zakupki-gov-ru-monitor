@@ -12,14 +12,16 @@
 // На доверие сертификатам вне контейнера это не влияет.
 //
 // Запуск:
-//   docker run --rm -v "$PWD":/w -v "$PWD/tests":/e2e -w /e2e \
+//   docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
+//     -v "$PWD":/w -v "$PWD/tests":/e2e -w /e2e \
 //     -e PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
 //     -e PROXY_SERVER=http://ПРОКСИ:ПОРТ -e PROXY_USER=... -e PROXY_PASS=... \
 //     mcr.microsoft.com/playwright:v1.60.0-noble \
-//     sh -c 'npm i --silent playwright-core@1.60.0 && xvfb-run -a node e2e-live.cjs'
+//     sh -c 'npm i --silent --no-save playwright-core@1.60.0 && xvfb-run -a node e2e-live.cjs'
 //
 // Ожидаемый результат: первый прогон записывает ~200 id и НЕ шлёт уведомлений,
-// второй даёт totalNew=0. Последнее проверено 29.07.2026.
+// на втором известные записи не приходят повторно (totalNew либо 0, либо
+// единицы — лента живая). Последнее проверено 29.07.2026.
 
 const { chromium } = require('playwright-core');
 
@@ -67,9 +69,21 @@ const { chromium } = require('playwright-core');
   console.log(JSON.stringify(second, null, 2));
 
   await ctx.close();
+
+  // Дедупликация проверяется не по `totalNew === 0`: лента живая и очень
+  // быстрая — по запросу «охрана» новые лоты появляются в течение секунд
+  // между двумя прогонами, и строгий ноль давал бы ложные падения.
+  // Настоящий признак работающей дедупликации — что известные записи НЕ
+  // пришли повторно: в seenIds добавилось ровно столько, сколько totalNew,
+  // а не весь фид заново. Если дедупликация сломается, totalNew будет ~200.
+  const grew = second.seenCount - first.seenCount;
+  const dedupOk = second.totalNew === grew && second.totalNew < first.seenCount / 10;
+  console.log(`\nдедупликация: было ${first.seenCount}, стало ${second.seenCount}, новых ${second.totalNew}` +
+              ` -> ${dedupOk ? 'OK, повторов нет' : 'СБОЙ, записи пришли заново'}`);
+
   const ok = first.res?.ok && (first.res.errors || []).length === 0 && first.seenCount > 0
           && first.initialized && first.status && !first.status.lastError
-          && second.totalNew === 0 && (second.errors || []).length === 0;
+          && dedupOk && (second.errors || []).length === 0;
   console.log(ok ? '\nE2E: OK' : '\nE2E: FAILED');
   process.exit(ok ? 0 : 1);
 })().catch(e => { console.error('FATAL:', e); process.exit(1); });

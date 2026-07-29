@@ -35,10 +35,37 @@ export function feedKey(feed) {
     const u = new URL(raw);
     u.hostname = u.hostname.toLowerCase();
     u.pathname = u.pathname.replace(/\/+$/, "") || "/";
+    // Якорь на сервер не уходит и ленту не меняет: с ним один и тот же адрес
+    // дал бы два ключа, то есть две «разные» ленты с одинаковым содержимым и
+    // сдвоенными уведомлениями.
+    u.hash = "";
     return u.toString();
   } catch {
     return raw;
   }
+}
+
+// Ленты разрешены только с портала закупок. host_permissions сами по себе
+// чужой домен не блокируют: fetch на него всё равно уйдёт, просто ответ
+// закроет CORS — то есть произвольный адрес из настроек превратился бы в
+// сетевой запрос на сторонний сайт. Проверка здесь делает границу настоящей,
+// а не декларативной, и даёт понятную ошибку вместо невнятного сетевого сбоя.
+export const FEED_HOST = "zakupki.gov.ru";
+
+export function isAllowedFeedUrl(url) {
+  let u;
+  try {
+    u = new URL(String(url || "").trim());
+  } catch {
+    return false;
+  }
+  if (u.protocol !== "https:") return false;
+  // Логин/пароль в адресе ленте не нужны, а выглядят ровно как приём маскировки
+  // чужого хоста под нужный. Нестандартный порт — тоже не адрес RSS портала.
+  if (u.username || u.password) return false;
+  if (u.port && u.port !== "443") return false;
+  const h = u.hostname.toLowerCase();
+  return h === FEED_HOST || h.endsWith("." + FEED_HOST);
 }
 
 export async function getState() {

@@ -15,7 +15,7 @@
 //   docker run --rm -v "$PWD":/w -v "$PWD/tests":/smoke -w /smoke \
 //     -e PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
 //     mcr.microsoft.com/playwright:v1.60.0-noble \
-//     sh -c 'npm i --silent playwright-core@1.60.0 && xvfb-run -a node smoke-chrome.cjs'
+//     sh -c 'npm i --silent --no-save playwright-core@1.60.0 && xvfb-run -a node smoke-chrome.cjs'
 //
 // Расширениям нужен headed-режим, поэтому xvfb обязателен.
 

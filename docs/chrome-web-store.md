@@ -51,7 +51,7 @@ Productivity (Продуктивность). Язык — русский.
 
 ПРИВАТНОСТЬ
 
-Расширение не собирает и никуда не передаёт данные. Никакой аналитики, никаких сторонних серверов. Ссылки на ленты и история найденных закупок хранятся локально, в chrome.storage.local. Сетевые запросы уходят только на zakupki.gov.ru и только по тем адресам, которые вы добавили сами. Доступ запрошен строго к домену zakupki.gov.ru — к другим сайтам расширение не обращается.
+Расширение не собирает сведений о вас и ничего не передаёт ни разработчику, ни рекламным и сторонним сервисам: запрос уходит только на сам портал закупок. Никакой аналитики, никаких сторонних серверов. Ссылки на ленты и найденные закупки хранятся локально, в chrome.storage.local, и стираются вместе с расширением. Сетевые запросы уходят только на zakupki.gov.ru и только по тем адресам, которые вы добавили сами: адрес проверяется в коде, cookie не отправляются. Полный текст — в политике конфиденциальности.
 
 Исходный код открыт: github.com/stufently/free-zakupki-gov-ru-monitor (лицензия MIT).
 
@@ -94,31 +94,75 @@ Productivity (Продуктивность). Язык — русский.
 
 ## Раскрытие данных (Data Usage)
 
+⚠️ **«Ничего не собираем» здесь — неверный ответ, хотя данные никуда не уходят.**
+Google требует раскрывать обработку данных **и при чисто локальном хранении**:
+[User Data FAQ, вопрос 3](https://developer.chrome.com/docs/webstore/program-policies/user-data-faq)
+— «Extensions are required to disclose how they handle user data, even when data
+is processed or stored locally on a user's device». А «website content and
+resources» прямо назван пользовательскими данными в вопросе 4. Расширение
+сохраняет заголовки, ссылки и даты закупок из ленты, то есть содержимое страниц
+портала — значит эту категорию надо отметить, иначе декларация расходится с кодом.
+
 В форме «Privacy practices» отмечать так:
 
-- Сбор персональных данных — **нет**, ни по одной категории.
-- Личная информация, данные о здоровье, финансовая информация, аутентификация, персональные сообщения, местоположение, история просмотров, действия пользователя, содержимое сайтов — **не собирается**.
+- **Содержимое сайтов (Website content) — да.** Пояснение: «Сохраняются заголовки, ссылки и даты записей из RSS-лент портала госзакупок, которые пользователь добавил сам. Хранятся локально в `chrome.storage.local`, наружу не передаются, нужны для показа списка найденного и чтобы не уведомлять дважды об одной закупке».
+- Личная информация, данные о здоровье, финансовая информация, аутентификация, персональные сообщения, местоположение, история просмотров, действия пользователя — **не собирается**.
 - Три обязательные декларации — подтвердить все:
   - данные не продаются и не передаются третьим сторонам;
   - данные не используются для целей, не связанных с основной функцией;
   - данные не используются для оценки кредитоспособности и не передаются кредитным организациям.
 
-Расширение действительно ничего не отправляет наружу: единственные сетевые
-запросы — `fetch` на адреса лент, которые пользователь добавил сам. Проверяется
-по исходникам в `extension/background.js`.
+Наружу расширение действительно ничего не отправляет: единственный сетевой
+запрос — `fetch` на адрес ленты, который пользователь добавил сам, с
+`credentials: "omit"` и проверкой домена. Проверяется по исходникам в
+`extension/background.js` и `extension/storage.js`.
 
-**Политика конфиденциальности.** Форма требует URL. Подойдёт раздел «Это безопасно?
-Куда уходят мои поисковые запросы?» из README, либо отдельная короткая страница.
+**Политика конфиденциальности.** Форма требует URL — вставлять этот:
+
+```
+https://github.com/stufently/free-zakupki-gov-ru-monitor/blob/main/docs/privacy-policy.md
+```
+
+Текст лежит в [`docs/privacy-policy.md`](privacy-policy.md). Страница публичная и
+постоянная, отдельный хостинг не нужен.
+
+---
+
+## Инструкция для ревьюера (Test instructions)
+
+Поле необязательное по форме, но здесь оно решающее: ревьюер почти наверняка
+находится вне России, портал ему не откроется, и без пояснения расширение
+выглядит нерабочим. Текст на английском — его читает ревьюер, а не пользователь:
+
+```
+IMPORTANT — the target website is geo-restricted and uses a Russian government TLS certificate.
+
+zakupki.gov.ru is the Russian public procurement portal. It is reachable only from Russian IP addresses, and since 2026-07-04 it serves a TLS certificate issued by the Russian Ministry of Digital Development CA, which Chrome does not trust by default. From outside Russia the extension will therefore show a network error for every feed — this is the portal's restriction, not a malfunction, and the extension reports it explicitly instead of failing silently.
+
+What the extension does: the user pastes an RSS URL from the portal's own search page; the extension polls it on a schedule and shows a desktop notification for each new procurement notice. No account, no server, no analytics.
+
+How to test the logic without portal access:
+1. Open the options page and add any URL — a non-zakupki.gov.ru address is rejected with a visible message, because the extension only ever talks to that one domain.
+2. Add a zakupki.gov.ru URL and press "Проверить сейчас" ("Check now"). Outside Russia this shows a network error under the feed, with a hint about the certificate.
+3. All parsing happens in an offscreen document (DOM_PARSER) because Manifest V3 service workers have no DOMParser. The offscreen document makes no network requests.
+
+Sample feed URL (works from a Russian IP):
+https://zakupki.gov.ru/epz/order/extendedsearch/rss.html?searchString=охрана&morphology=on&pageNumber=1&fz44=on
+
+Source code: https://github.com/stufently/free-zakupki-gov-ru-monitor
+```
 
 ---
 
 ## Чек-лист перед отправкой на ревью
 
 - [ ] Аккаунт разработчика Chrome Web Store (разовый взнос $5).
+- [ ] Двухфакторная аутентификация на аккаунте разработчика — без неё публикация не откроется.
+- [ ] Заполнить «Test instructions» для ревьюера (текст ниже) — иначе он увидит нерабочее расширение и отклонит.
 - [ ] Иконка 128×128 — есть, `extension/icons/icon128.png`.
 - [ ] Скриншоты 1280×800 — есть, `docs/screenshots/store/` (три штуки).
 - [ ] Промо-плитка 440×280 — **нет**, опциональна; без неё расширение не попадёт в подборки.
-- [ ] Ссылка на политику конфиденциальности.
+- [x] Ссылка на политику конфиденциальности — [`docs/privacy-policy.md`](privacy-policy.md).
 - [ ] Проверить актуальность версии в `extension/manifest.json` — она же уйдёт в Store.
 - [ ] Прогнать `tests/e2e-live.cjs` против живого портала (нужен доступ из РФ).
 

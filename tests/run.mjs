@@ -228,6 +228,54 @@ function fixture(name) {
   );
 }
 
+// ---- 17. Допуск адресов лент -------------------------------------------
+// host_permissions чужой домен не блокируют: fetch туда уйдёт, ответ просто
+// закроет CORS. Значит адрес из настроек — это то, что расширение реально
+// пойдёт запрашивать, и фильтр должен быть настоящим.
+{
+  const { isAllowedFeedUrl } = await import(join(here, "..", "extension", "storage.js"));
+
+  const allowed = [
+    "https://zakupki.gov.ru/epz/order/extendedsearch/rss.html?searchString=охрана",
+    "https://ZAKUPKI.GOV.RU/epz/order/extendedsearch/rss.html", // регистр хоста не важен
+    "https://old.zakupki.gov.ru/feed.rss", // поддомен разрешён host_permissions
+  ];
+  for (const u of allowed) {
+    assert(isAllowedFeedUrl(u) === true, `должен быть разрешён: ${u}`);
+  }
+
+  const denied = [
+    "http://zakupki.gov.ru/feed.rss",           // только https
+    "https://example.com/feed.rss",             // чужой сайт
+    "https://zakupki.gov.ru.evil.com/feed.rss", // хост лишь начинается с нужного
+    "https://evilzakupki.gov.ru/feed.rss",      // без точки перед доменом — другой хост
+    "https://zakupki.gov.ru@evil.com/feed.rss", // нужный домен в userinfo, а не в хосте
+    "https://zаkupki.gov.ru/feed.rss",          // кириллическая «а»: другой хост после punycode
+    "https://user:pass@zakupki.gov.ru/feed.rss", // логин/пароль в адресе ленты не бывает
+    "https://zakupki.gov.ru:444/feed.rss",      // нестандартный порт
+    "javascript:alert(1)",                      // не URL ленты вовсе
+    "не ссылка",
+    "",
+    null,
+    undefined,
+  ];
+  for (const u of denied) {
+    assert(isAllowedFeedUrl(u) === false, `должен быть запрещён: ${JSON.stringify(u)}`);
+  }
+
+  // Явный порт 443 — это и есть https по умолчанию, адрес остаётся тем же.
+  assert(isAllowedFeedUrl("https://zakupki.gov.ru:443/feed.rss") === true, "порт 443 = обычный https");
+
+  // Якорь не должен плодить «разные» ленты из одного адреса.
+  const { feedKey } = await import(join(here, "..", "extension", "storage.js"));
+  const base = "https://zakupki.gov.ru/epz/order/extendedsearch/rss.html?searchString=x";
+  assert(
+    feedKey({ url: base + "#a" }) === feedKey({ url: base + "#b" }),
+    "адреса, различающиеся только якорем, должны давать один ключ ленты"
+  );
+  assert(feedKey({ url: base }) === feedKey({ url: base + "#a" }), "якорь не должен менять ключ ленты");
+}
+
 console.log(`\nPassed: ${pass}`);
 console.log(`Failed: ${fail}`);
 if (fail > 0) {
