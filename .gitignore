@@ -6,3 +6,7 @@ node_modules/
 .idea/
 .vscode/
 tests/node_modules/
+
+# локальные настройки Claude Code и её временные файлы
+.claude/settings.local.json
+.claude/*.tmp.*
