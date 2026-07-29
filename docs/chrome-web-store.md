@@ -211,6 +211,11 @@ Source code: https://github.com/stufently/free-zakupki-gov-ru-monitor
 
 ### Как получить `CWS_REFRESH_TOKEN`
 
+Шаги 1–3 уже выполнены 29.07.2026 — заново их делать не нужно. В Google Cloud
+заведён проект `zakupki-monitor-store`: Chrome Web Store API включён, consent
+screen типа External переведён **в Production**, создан OAuth-клиент
+`zakupki-monitor CI release` (Web application) с redirect URI на OAuth Playground.
+
 1. В [Google Cloud Console](https://console.cloud.google.com) создать проект и
    включить в нём **Chrome Web Store API**.
 2. OAuth consent screen: тип **External**, заполнить обязательные поля и
