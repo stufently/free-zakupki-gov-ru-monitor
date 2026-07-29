@@ -1,7 +1,16 @@
 name: Release
 
+# Релиз выпускается АВТОМАТИЧЕСКИ по bump'у версии в extension/manifest.json.
+# Достаточно смержить в main изменение version — workflow сам создаст тег vX.Y.Z
+# и опубликует Release со сборкой. Ручной шаг с тегом убран намеренно: это было
+# место, где выпуск забывали, и правка не доезжала до тех, кто ставит ZIP.
+#
+# Если тег на текущую версию уже существует, публикация тихо пропускается —
+# обычные коммиты в main (README, тесты) релиз не плодят.
+
 on:
   push:
+    branches: [main]
     tags:
       - "v*"
   workflow_dispatch:
@@ -14,24 +23,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # нужны все теги, чтобы понять, выпущена ли уже эта версия
 
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
 
-      - name: Read version from manifest
+      - name: Read version and decide whether to release
         id: ver
         run: |
           VERSION=$(jq -r .version extension/manifest.json)
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+          if git rev-parse -q --verify "refs/tags/v$VERSION" > /dev/null; then
+            echo "Тег v$VERSION уже существует — релиз пропускаем."
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Версия v$VERSION ещё не выпущена — будет создан тег и Release."
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Verify tag matches manifest version
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           TAG="${GITHUB_REF_NAME#v}"
-          MANIFEST=$(jq -r .version extension/manifest.json)
-          test "$TAG" = "$MANIFEST" \
-            || { echo "::error::тег v$TAG не совпадает с version=$MANIFEST в manifest.json"; exit 1; }
+          test "$TAG" = "${{ steps.ver.outputs.version }}" \
+            || { echo "::error::тег v$TAG не совпадает с version=${{ steps.ver.outputs.version }} в manifest.json"; exit 1; }
 
       - name: Run parser tests
         working-directory: tests
@@ -59,14 +77,19 @@ jobs:
           path: dist/*.zip
 
       - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        # Тег создаётся самим действием из tag_name на текущем коммите,
+        # поэтому отдельный git tag / git push не нужен.
+        if: steps.ver.outputs.should_release == 'true' || startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v3
         with:
+          tag_name: v${{ steps.ver.outputs.version }}
           files: dist/*.zip
           generate_release_notes: true
           name: v${{ steps.ver.outputs.version }}
           body: |
-            Автоматическая сборка из тега `${{ github.ref_name }}`.
+            Автоматическая сборка версии `${{ steps.ver.outputs.version }}` из `manifest.json`.
+
+            Что изменилось — см. [CHANGELOG.md](https://github.com/stufently/free-zakupki-gov-ru-monitor/blob/main/CHANGELOG.md).
 
             ## Установка
 
@@ -76,3 +99,8 @@ jobs:
             4. Нажмите «Загрузить распакованное расширение» и выберите распакованную папку.
 
             Если предпочитаете git: `git clone https://github.com/stufently/free-zakupki-gov-ru-monitor.git` и выберите подпапку `extension/`.
+
+            > **Важно:** с 4 июля 2026 года zakupki.gov.ru работает на TLS-сертификате НУЦ Минцифры,
+            > которому Chrome не доверяет по умолчанию. Если ленты не читаются — установите корневые
+            > сертификаты по инструкции [gosuslugi.ru/crt](https://www.gosuslugi.ru/crt)
+            > либо пользуйтесь Яндекс.Браузером или Атомом.
