@@ -67,9 +67,21 @@ const { chromium } = require('playwright-core');
   console.log(JSON.stringify(second, null, 2));
 
   await ctx.close();
+
+  // Дедупликация проверяется не по `totalNew === 0`: лента живая и очень
+  // быстрая — по запросу «охрана» новые лоты появляются в течение секунд
+  // между двумя прогонами, и строгий ноль давал бы ложные падения.
+  // Настоящий признак работающей дедупликации — что известные записи НЕ
+  // пришли повторно: в seenIds добавилось ровно столько, сколько totalNew,
+  // а не весь фид заново. Если дедупликация сломается, totalNew будет ~200.
+  const grew = second.seenCount - first.seenCount;
+  const dedupOk = second.totalNew === grew && second.totalNew < first.seenCount / 10;
+  console.log(`\nдедупликация: было ${first.seenCount}, стало ${second.seenCount}, новых ${second.totalNew}` +
+              ` -> ${dedupOk ? 'OK, повторов нет' : 'СБОЙ, записи пришли заново'}`);
+
   const ok = first.res?.ok && (first.res.errors || []).length === 0 && first.seenCount > 0
           && first.initialized && first.status && !first.status.lastError
-          && second.totalNew === 0 && (second.errors || []).length === 0;
+          && dedupOk && (second.errors || []).length === 0;
   console.log(ok ? '\nE2E: OK' : '\nE2E: FAILED');
   process.exit(ok ? 0 : 1);
 })().catch(e => { console.error('FATAL:', e); process.exit(1); });

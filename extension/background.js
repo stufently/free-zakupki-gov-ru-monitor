@@ -284,6 +284,12 @@ async function fetchFeedText(url) {
       resp = await fetch(url, {
         cache: "no-store",
         redirect: "follow",
+        // Лента публичная, cookie для неё не нужны. Пользователь может быть
+        // авторизован на портале, и его сессионная cookie не должна уходить
+        // с каждой фоновой проверкой. Значение по умолчанию ("same-origin")
+        // при кросс-ориджин запросе тоже их не шлёт, но оно неявное: строка
+        // здесь фиксирует поведение и делает его проверяемым.
+        credentials: "omit",
         signal: ctrl.signal,
         headers: { Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml" },
       });
