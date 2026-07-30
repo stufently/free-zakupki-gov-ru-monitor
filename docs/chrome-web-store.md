@@ -102,21 +102,34 @@ Store запрещают вводить пользователя в заблуж
 
 ## Обоснование разрешений
 
-Форма ревью требует объяснить каждое разрешение отдельно.
+Форма ревью требует объяснить каждое разрешение отдельно. Поля вкладки Privacy
+видит только ревьюер Store, а не пользователь, поэтому текст в них английский —
+как и в Test instructions. По-русски заполняется лишь то, что попадает в карточку.
 
-| Разрешение | Что писать в форме |
+**Single purpose description:**
+
+```
+The extension monitors RSS feeds of zakupki.gov.ru, the Russian public procurement portal, and notifies the user when a new procurement notice appears in a feed they added themselves. That is its only function: it has no accounts, no server, no analytics, and does nothing on any other website.
+```
+
+**Permission justification** — по одному полю на разрешение:
+
+| Поле | Текст |
 |---|---|
-| `alarms` | Периодическая проверка RSS-лент по расписанию, заданному пользователем. Без таймера расширение не сможет узнать о новых закупках. |
-| `notifications` | Системное уведомление о новой закупке — основная функция расширения. |
-| `storage` | Локальное хранение списка лент пользователя, настроек расписания и идентификаторов уже показанных записей (нужны, чтобы не уведомлять дважды об одном и том же). |
-| `offscreen` | Разбор XML скачанной RSS-ленты. В Manifest V3 service worker не имеет доступа к DOM API, поэтому `DOMParser` вызывается в offscreen-документе с причиной `DOM_PARSER`. Offscreen-документ не делает сетевых запросов и ничего не отображает. |
-| `host_permissions: https://zakupki.gov.ru/*`, `https://*.zakupki.gov.ru/*` | Загрузка RSS-лент с государственного портала закупок. Это единственный домен, к которому расширение обращается. |
+| `alarms justification` | `chrome.alarms` schedules the periodic feed check at the interval the user picks on the options page. Without a timer the extension cannot learn about new procurement notices while its popup is closed. Used for nothing else. |
+| `notifications justification` | A desktop notification about a new procurement notice is the extension's main output; the popup list and the badge counter show the same findings inside the browser. A notification is created only for feed entries that were not seen before, and clicking it opens that entry's link — only if the link is `http`/`https`. |
+| `storage justification` | `chrome.storage.local` holds the user's own list of feed URLs, the polling interval, the IDs of feed entries already processed (this is what prevents announcing the same procurement twice), the recent findings shown in the popup (title, link and publication date of each entry) and the last check result per feed for the diagnostics panel. Nothing from that storage is uploaded anywhere; the extension's only outbound request is fetching a feed the user added. |
+| `offscreen justification` | A downloaded feed is XML and has to be parsed with `DOMParser`, which does not exist in a Manifest V3 service worker. The extension opens an offscreen document with reason `DOM_PARSER` only to parse that XML string. The offscreen document makes no network requests and renders nothing visible. |
+| `Host permission justification` | The extension fetches RSS feeds from `zakupki.gov.ru`, the Russian public procurement portal — the only site it is meant to talk to. A URL the user adds is validated against that domain and rejected otherwise, and requests go out with `credentials: "omit"`. Redirects are followed so that the portal's own internal moves keep working, but the final URL is re-checked: if a portal response redirects outside the portal, the response is discarded without being read or parsed. No content scripts are injected — the host permission is used only for `fetch()` from the service worker. |
 
-**Single purpose (единое назначение)** — формулировка для соответствующего поля:
+Предупреждение формы «Due to the Host Permission, your extension may require an
+in-depth review» — ожидаемое и не ошибка: любое `host_permissions` включает
+углублённую проверку. Именно поэтому Test instructions (ниже) заполнять
+обязательно, хотя формально поле необязательное.
 
-```
-Расширение следит за RSS-лентами государственного портала закупок zakupki.gov.ru и уведомляет пользователя о новых записях в них.
-```
+**Remote code** — отвечать «No, I am not using remote code». Весь код лежит в
+пакете; из сети приходят только XML-данные ленты, которые парсятся как данные и
+никогда не исполняются.
 
 ---
 
