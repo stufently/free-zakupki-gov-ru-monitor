@@ -100,7 +100,13 @@ jobs:
       - name: Create GitHub Release
         # Тег создаётся самим действием из tag_name на текущем коммите,
         # поэтому отдельный git tag / git push не нужен.
-        if: steps.ver.outputs.should_release == 'true' || startsWith(github.ref, 'refs/tags/v')
+        #
+        # Только с main (или с тега): иначе ручной прогон на ветке с bump'ом —
+        # единственный способ проверить выкладку в Store, не отправляя версию на
+        # ревью, — заодно выпускал бы Release и вешал тег на коммит из ветки.
+        if: >-
+          (steps.ver.outputs.should_release == 'true' && github.ref == 'refs/heads/main')
+          || startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.ver.outputs.version }}
@@ -176,10 +182,24 @@ jobs:
           CWS_PUBLISH: ${{ github.event.inputs.mode != 'upload-only' }}
         run: |
           # Секреты нельзя проверить в `if:` на уровне job — контекст secrets там
-          # недоступен. Поэтому выходим здесь: пока аккаунта разработчика нет,
-          # workflow должен оставаться зелёным, а не падать на каждом релизе.
-          if [ -z "$CWS_REFRESH_TOKEN" ]; then
-            echo "::notice::Секреты Chrome Web Store не заданы — выкладка пропущена. Сборка и GitHub Release не затронуты."
-            exit 0
+          # недоступен, поэтому проверяем здесь.
+          MISSING=""
+          for NAME in CWS_PUBLISHER_ID CWS_ITEM_ID CWS_CLIENT_ID CWS_CLIENT_SECRET CWS_REFRESH_TOKEN; do
+            [ -z "${!NAME}" ] && MISSING="$MISSING $NAME"
+          done
+
+          if [ -n "$MISSING" ]; then
+            # В форке секретов нет и быть не должно — там пропускаем молча.
+            if [ "$GITHUB_REPOSITORY" != "stufently/free-zakupki-gov-ru-monitor" ]; then
+              echo "::notice::Форк без секретов Chrome Web Store — выкладка пропущена."
+              exit 0
+            fi
+            # А в основном репозитории это отказ, а не «нечего делать»: товар
+            # опубликован, и пропущенная выкладка означала бы зелёный релиз с
+            # устаревшей версией в Store. Раньше здесь был notice + exit 0 —
+            # это было верно ровно до того, как секреты появились.
+            echo "::error::Не заданы секреты Chrome Web Store:$MISSING. Версия собрана и GitHub Release выпущен, но в Store не уехала. Задайте секреты и повторите ручным запуском в режиме upload-and-publish."
+            exit 1
           fi
+
           bash scripts/cws-deploy.sh dist/free-zakupki-gov-ru-monitor-${{ needs.build.outputs.version }}.zip

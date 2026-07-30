@@ -10,11 +10,24 @@
 // Запуск: node cws-deploy.test.mjs
 
 import { createServer } from "node:http";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { writeFileSync, mkdtempSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
+
+// Скрипт выкладки написан на bash и держится на curl и jq. Без них падают
+// 21 из 31 проверки — с сообщениями про пустой ответ Store, по которым не
+// догадаться, что дело в окружении, а не в скрипте. На ubuntu-latest всё это
+// есть, а вот в node:*-slim нет ни curl, ни jq.
+for (const tool of ["bash", "curl", "jq"]) {
+  if (spawnSync("sh", ["-c", `command -v ${tool}`]).status !== 0) {
+    console.error(`Не найден ${tool} — тесты cws-deploy без него не имеют смысла.`);
+    console.error("В CI (ubuntu-latest) всё это есть. В Docker: node:*-slim идёт без curl и jq,");
+    console.error("в node:24 нет jq — доставьте его в контейнере: apt-get update && apt-get install -y jq.");
+    process.exit(1);
+  }
+}
 
 const SCRIPT = fileURLToPath(new URL("../scripts/cws-deploy.sh", import.meta.url));
 const PUBLISHER = "pub123";

@@ -202,8 +202,11 @@ Source code: https://github.com/stufently/free-zakupki-gov-ru-monitor
 её на ревью. Логика вынесена в [`scripts/cws-deploy.sh`](../scripts/cws-deploy.sh) —
 её же можно запустить руками, если CI недоступен.
 
-Пока секреты не заданы, шаг выкладки печатает `notice` и завершается успешно:
-до появления аккаунта разработчика релизы не должны краснеть.
+Все пять секретов заведены 30.07.2026, выкладка включена. Если какого-то из них
+не окажется, шаг **падает с ошибкой** и перечисляет недостающие: товар
+опубликован, и молча пропущенная выкладка означала бы зелёный релиз со старой
+версией в Store. В форках, где секретов нет и быть не должно, шаг по-прежнему
+пропускается молча.
 
 ### Что важно знать заранее
 
@@ -223,7 +226,10 @@ Source code: https://github.com/stufently/free-zakupki-gov-ru-monitor
 
 ### Секреты репозитория
 
-`Settings → Secrets and variables → Actions → New repository secret`:
+Заведены все пять (проверить: `gh secret list`). Заводить заново нужно только при
+ротации — тогда `gh secret set CWS_CLIENT_SECRET` **без** `--body`: значение
+спрашивается скрытым вводом и не попадает ни в историю оболочки, ни в логи.
+Через веб-интерфейс — `Settings → Secrets and variables → Actions`.
 
 | Секрет | Где взять |
 |---|---|
@@ -235,10 +241,12 @@ Source code: https://github.com/stufently/free-zakupki-gov-ru-monitor
 
 ### Как получить `CWS_REFRESH_TOKEN`
 
-Шаги 1–3 уже выполнены 29.07.2026 — заново их делать не нужно. В Google Cloud
-заведён проект `zakupki-monitor-store`: Chrome Web Store API включён, consent
-screen типа External переведён **в Production**, создан OAuth-клиент
-`zakupki-monitor CI release` (Web application) с redirect URI на OAuth Playground.
+Токен получен и заведён в секреты 30.07.2026 — вся процедура ниже нужна только
+для ротации или если токен отозвали. В Google Cloud заведён проект
+`zakupki-monitor-store`: Chrome Web Store API включён, consent screen типа
+External переведён **в Production** (в статусе Testing токен живёт 7 дней),
+создан OAuth-клиент `zakupki-monitor CI release` (Web application) с redirect URI
+на OAuth Playground.
 
 1. В [Google Cloud Console](https://console.cloud.google.com) создать проект и
    включить в нём **Chrome Web Store API**.
@@ -261,6 +269,7 @@ screen типа External переведён **в Production**, создан OAut
 |---|---|
 | `upload-and-publish` | По умолчанию. То же, что происходит само после bump'а версии. |
 | `upload-only` | Залить черновик и посмотреть его в дашборде глазами до отправки на ревью. |
+| — | **Версия должна быть больше опубликованной.** Ручной запуск на уже выпущенной версии Store отклонит: `upload-and-publish` упадёт на повторной загрузке. Чтобы прогнать выкладку «на сухую», bump'ните версию в ветке и запустите workflow на ней — Release и тег создаются только с `main` или с тега, поэтому ветка ничего лишнего не выпустит. |
 | `publish-only` | Пакет уже принят, а публикация упала. Повторная загрузка той же версии была бы отклонена как неувеличенная, поэтому повторяется только публикация. |
 
 ---
