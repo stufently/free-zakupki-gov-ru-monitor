@@ -159,3 +159,21 @@ export async function pushRecent(entries) {
 export async function clearRecent() {
   await chrome.storage.local.set({ recent: [] });
 }
+
+// Сброс состояния ленты: забываем seenIds и флаг initialized, но НЕ трогаем
+// саму ленту и «Недавние». Следующая проверка посчитает текущие записи ленты
+// новыми — попадут в список, но уведомлений не будет (сработает first-run).
+export async function resetFeed(urlKey) {
+  if (!urlKey) return;
+  const all = await chrome.storage.local.get(["seenIds", "initialized"]);
+  const seen = all.seenIds || {};
+  const init = all.initialized || {};
+  if (!(urlKey in seen) && !(urlKey in init)) return;
+  delete seen[urlKey];
+  delete init[urlKey];
+  await chrome.storage.local.set({ seenIds: seen, initialized: init });
+}
+
+export async function resetAllFeeds() {
+  await chrome.storage.local.set({ seenIds: {}, initialized: {} });
+}
