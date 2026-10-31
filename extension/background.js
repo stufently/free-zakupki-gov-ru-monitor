@@ -22,6 +22,11 @@ const FETCH_TIMEOUT_MS = 30000;
 // подменённый ответ), парсить такое смысла нет.
 const MAX_FEED_BYTES = 5 * 1024 * 1024;
 
+// Первый запуск ленты: уведомления не показываем, но наполняем «Недавние» —
+// иначе popup до первой настоящей новой записи выглядит пустым. Полный фид —
+// это десятки позиций, поэтому список режем до 10, а не тащим всю ленту.
+const FIRST_RUN_RECENT_CAP = 10;
+
 chrome.runtime.onInstalled.addListener(async () => {
   await rescheduleAlarm();
 });
@@ -258,9 +263,6 @@ async function checkFeed(feed, state, key) {
   // в этом проходе не считали те же item'ы fresh снова.
   state.seenIds[key] = Array.from(new Set([...(state.seenIds[key] || []), ...ids]));
 
-  // Первый запуск — не уведомляем (просто запоминаем текущее состояние).
-  if (!wasInitialized) return [];
-
   // description намеренно НЕ сохраняем: он не показывается ни в popup, ни в
   // уведомлении, а это самое объёмное поле записи. Хранить содержимое страниц
   // портала «на всякий случай» незачем — ни пользователю, ни ревью Store.
@@ -272,6 +274,14 @@ async function checkFeed(feed, state, key) {
     pubDate: it.pubDate,
     foundAt: new Date().toISOString(),
   }));
+
+  // Первый запуск: уведомления не показываем (чтобы не сыпать старыми записями
+  // всей ленты), но список «Недавних» наполняем — иначе popup до первой
+  // настоящей новой записи выглядит пустым и похожим на неработающий.
+  if (!wasInitialized) {
+    await pushRecent(enriched.slice(0, FIRST_RUN_RECENT_CAP));
+    return [];
+  }
   await pushRecent(enriched);
   return enriched;
 }
