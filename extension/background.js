@@ -269,6 +269,10 @@ async function checkFeed(feed, state, key) {
   const enriched = fresh.map((it) => ({
     feedId: feed.id,
     feedTitle: feed.title || parsed.channelTitle,
+    // id записи (guid || link || title) — тот же, которым markSeen помечает
+    // запись виденной. Нужен в recent для честной дедупликации: title без guid
+    // схлопывает разные тендеры с одинаковым заголовком.
+    id: it.id,
     title: it.title,
     link: it.link,
     pubDate: it.pubDate,

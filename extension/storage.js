@@ -152,7 +152,22 @@ export async function markSeen(urlKey, ids, limit) {
 
 export async function pushRecent(entries) {
   const cur = await getState();
-  const recent = [...entries, ...cur.recent].slice(0, cur.settings.maxRecent);
+  // Дедупликация: одна и та же запись не должна занимать два слота recent.
+  // Ключ = feedId + идентификатор записи. Идентификатор — тот же id, которым
+  // markSeen помечает запись виденной (guid || link || title):
+  //   - feedId в ключе не даёт записи с одинаковым link из двух лент
+  //     (пересекающиеся поиски) выкидывать запись из первой группы;
+  //   - id вместо link различает записи без link, но с разными guid
+  //     (у них может совпасть заголовок).
+  const seen = new Set();
+  const recent = [];
+  for (const entry of [...entries, ...cur.recent]) {
+    const key = `${entry.feedId}:${entry.id || entry.link || entry.title}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    recent.push(entry);
+    if (recent.length >= cur.settings.maxRecent) break;
+  }
   await chrome.storage.local.set({ recent });
 }
 
