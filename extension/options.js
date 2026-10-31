@@ -30,6 +30,18 @@ async function init() {
 
   $("#save").addEventListener("click", save);
   $("#check-now").addEventListener("click", checkNow);
+  $("#reset-all").addEventListener("click", resetAll);
+}
+
+async function resetAll() {
+  if (!confirm("Сбросить состояние всех лент? При следующей проверке вы увидите последние записи из каждой ленты (без уведомлений).")) return;
+  // Через service worker: сброс сериализуется с идущей фоновой проверкой.
+  const res = await chrome.runtime.sendMessage({ type: "resetAllFeeds" });
+  if (!res || !res.ok) {
+    setStatus("Ошибка: " + (res?.error || "неизвестно"));
+    return;
+  }
+  setStatus("Состояние всех лент сброшено ✓");
 }
 
 function addFeedRow(feed, status) {
@@ -40,6 +52,28 @@ function addFeedRow(feed, status) {
   row.querySelector(".url").value = feed.url || "";
   row.querySelector(".enabled input").checked = feed.enabled !== false;
   row.querySelector(".remove").addEventListener("click", () => row.remove());
+  // Ключ — из СОХРАНЁННОГО объекта ленты (замыкание), а не из input:
+  // по несохранённому URL сбрасывать нечего. Несохранённые ленты — кнопка
+  // выключена; для сохранённых пользователь мог отредактировать URL в строке,
+  // тогда сброс относится к сохранённому адресу.
+  const savedKey = feed.url ? feedKey(feed) : "";
+  if (!savedKey) {
+    row.querySelector(".reset").disabled = true;
+    row.querySelector(".reset").title = "Сначала сохраните ленту и дождитесь первой проверки";
+  } else {
+    row.querySelector(".reset").addEventListener("click", async () => {
+      const res = await chrome.runtime.sendMessage({ type: "resetFeed", urlKey: savedKey });
+      if (!res || !res.ok) {
+        setStatus("Ошибка: " + (res?.error || "неизвестно"));
+        return;
+      }
+      if (!res.changed) {
+        setStatus("Нечего сбрасывать: лента ещё не проверялась.");
+        return;
+      }
+      setStatus(`Лента «${feed.title || feed.url.slice(0, 40)}» сброшена ✓`);
+    });
+  }
   renderStatus(row.querySelector(".feed-status"), status, feed.url);
   $("#feeds").appendChild(row);
 }
