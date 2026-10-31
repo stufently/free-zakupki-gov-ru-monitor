@@ -42,7 +42,7 @@ jobs:
   smoke:
     # Загружает расширение в настоящий Chromium. Юнит-тесты идут с полифилом
     # DOMParser и потому не заметили, что в 0.1.0 расширение не работало вовсе.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # Playwright 1.60 не поддерживает ubuntu-26.04 (ubuntu-latest с 19.10.2026)
     steps:
       - uses: actions/checkout@v7
 
