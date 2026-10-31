@@ -42,7 +42,7 @@ jobs:
   smoke:
     # Загружает расширение в настоящий Chromium. Юнит-тесты идут с полифилом
     # DOMParser и потому не заметили, что в 0.1.0 расширение не работало вовсе.
-    runs-on: ubuntu-24.04  # Playwright 1.60 не поддерживает ubuntu-26.04 (ubuntu-latest с 19.10.2026)
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
 
@@ -53,8 +53,8 @@ jobs:
       - name: Install Playwright Chromium
         run: |
           npm init -y > /dev/null
-          npm i --silent --no-audit --no-fund playwright-core@1.60.0
-          npx --yes playwright@1.60.0 install --with-deps chromium
+          npm i --silent --no-audit --no-fund playwright-core@1.64.1
+          npx --yes playwright@1.64.1 install --with-deps chromium
 
       - name: Smoke test extension in Chromium
         env:
