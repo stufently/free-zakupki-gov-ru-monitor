@@ -70,20 +70,63 @@ async function render() {
       : "Пока нет новых записей. Расширение проверит ленты по расписанию.";
     list.appendChild(li);
   } else {
-    state.recent.forEach((item) => {
-      const li = document.createElement("li");
-      li.innerHTML = `
-        <div class="title"></div>
-        <div class="meta"><span class="feed"></span><span class="date"></span></div>
-      `;
-      li.querySelector(".title").textContent = item.title;
-      li.querySelector(".feed").textContent = item.feedTitle || "";
-      li.querySelector(".date").textContent = formatDate(item.pubDate || item.foundAt);
-      li.addEventListener("click", () => {
-        if (item.link) chrome.tabs.create({ url: item.link });
-      });
-      list.appendChild(li);
-    });
+    // Группируем «Недавние» по ленте: при нескольких лентах плоский список
+    // перемешивал закупки из разных поисков, и найти нужную было трудно.
+    // Ключ — feedId, а НЕ название: у двух лент может совпасть custom title
+    // или channelTitle, и тогда они слились бы в одну группу.
+    const groups = new Map();
+    for (const item of state.recent) {
+      const key = item.feedId || "";
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(item);
+    }
+
+    let first = true;
+    for (const [feedId, items] of groups) {
+      // details/summary вместо div + JS-тогглер: сворачивание работает
+      // и с клавиатуры (Tab + Enter/Space) без единой строки JS.
+      const details = document.createElement("details");
+      // Первую (самую свежую) группу раскрываем сразу — иначе список до
+      // первого клика выглядит пустым. Остальные свёрнуты: старые записи
+      // не мешают видеть свежие.
+      if (first) details.open = true;
+      first = false;
+
+      // Метка группы — актуальное название ленты из настроек; для записей
+      // от удалённой/переименованной ленты — сохранённое в записи.
+      const feed = state.feeds.find((f) => f.id === feedId);
+      const label = (feed && feed.title) || items[0].feedTitle || "Без названия";
+
+      const header = document.createElement("summary");
+      header.className = "group-header";
+      header.innerHTML = `<span class="group-title"></span><span class="group-count"></span>`;
+      header.querySelector(".group-title").textContent = label;
+      header.querySelector(".group-count").textContent = items.length;
+
+      const sublist = document.createElement("ul");
+      sublist.className = "group-items";
+
+      for (const item of items) {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <div class="title"></div>
+          <div class="meta"><span class="date"></span></div>
+        `;
+        li.querySelector(".title").textContent = item.title;
+        li.querySelector(".date").textContent = formatDate(item.pubDate || item.foundAt);
+        li.addEventListener("click", () => {
+          if (item.link) chrome.tabs.create({ url: item.link });
+        });
+        sublist.appendChild(li);
+      }
+
+      const wrapper = document.createElement("li");
+      wrapper.className = "group";
+      details.appendChild(header);
+      details.appendChild(sublist);
+      wrapper.appendChild(details);
+      list.appendChild(wrapper);
+    }
   }
 
   $("#count").textContent = `Лент: ${state.feeds.length}, в списке: ${state.recent.length}`;
