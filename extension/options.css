@@ -18,7 +18,7 @@ section { background: #fff; border: 1px solid #e5e5ea; border-radius: 8px; paddi
 .feed-row { margin-bottom: 12px; }
 .feed {
   display: grid;
-  grid-template-columns: 1fr 2fr auto auto;
+  grid-template-columns: 1fr 2fr auto auto auto;
   gap: 8px;
   align-items: center;
 }
@@ -47,6 +47,10 @@ button:hover { background: #f0f0f0; }
 button.primary { background: #1971c2; color: #fff; border-color: #1971c2; }
 button.primary:hover { background: #1864ab; }
 button.remove { color: #c92a2a; }
+button.danger { color: #c92a2a; border-color: #c92a2a; }
+button.danger:hover { background: #fff5f5; }
+button.reset { color: #e67700; }
+button.reset:hover { background: #fff9db; }
 .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: transparent; border: none; padding: 0; }
 #status { font-size: 13px; color: #555; }
 select { padding: 6px 8px; border-radius: 6px; border: 1px solid #ccc; }

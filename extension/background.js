@@ -8,6 +8,8 @@ import {
   markInitialized,
   pushRecent,
   setFeedStatus,
+  resetFeed,
+  resetAllFeeds,
   feedKey,
   isAllowedFeedUrl,
   FEED_HOST,
@@ -64,6 +66,20 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       .then(() => sendResponse({ ok: true }))
       .catch((e) => sendResponse({ ok: false, error: String(e) }));
     return true;
+  }
+  // Сброс состояния лент — тоже через service worker: только здесь он
+  // сериализуется с фоновыми проверками (см. runSerialized).
+  if (msg && msg.type === "resetFeed") {
+    runSerialized(() => resetFeed(msg.urlKey))
+      .then((changed) => sendResponse({ ok: true, changed: !!changed }))
+      .catch((e) => sendResponse({ ok: false, error: String(e) }));
+    return true; // async
+  }
+  if (msg && msg.type === "resetAllFeeds") {
+    runSerialized(resetAllFeeds)
+      .then(() => sendResponse({ ok: true }))
+      .catch((e) => sendResponse({ ok: false, error: String(e) }));
+    return true; // async
   }
 });
 
@@ -187,9 +203,27 @@ async function parseFeedOffscreen(xml, baseUrl) {
 // дубль уведомлений и потерю состояния.
 let inFlight = null;
 
+// Единая очередь для проверок и сбросов состояния лент. Сброс из UI гонится с
+// checkFeed: тот держит снапшот state в памяти, и если сброс вклинится между
+// чтением state и markSeen, проверка запишет только что забытые ID обратно —
+// сброс потеряется, а пользователь ещё и получит уведомление по «забытой»
+// записи. Поэтому сбросы тоже идут через service worker и эту же очередь.
+let queue = Promise.resolve();
+
+function runSerialized(task) {
+  const run = queue.then(task);
+  // Очередь не должна ломаться на отброшенной задаче: следующий участник
+  // стартует независимо от результата предыдущего.
+  queue = run.then(
+    () => {},
+    () => {}
+  );
+  return run;
+}
+
 async function checkAllFeeds() {
   if (inFlight) return inFlight;
-  inFlight = (async () => {
+  inFlight = runSerialized(async () => {
     const state = await getState();
     let totalNew = 0;
     const errors = [];
@@ -229,7 +263,7 @@ async function checkAllFeeds() {
 
     await updateBadge();
     return { totalNew, errors };
-  })();
+  });
   try {
     return await inFlight;
   } finally {
