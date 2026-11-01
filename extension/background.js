@@ -8,6 +8,7 @@ import {
   markInitialized,
   pushRecent,
   setFeedStatus,
+  setFeeds,
   resetFeed,
   resetAllFeeds,
   feedKey,
@@ -77,6 +78,16 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
   if (msg && msg.type === "resetAllFeeds") {
     runSerialized(resetAllFeeds)
+      .then(() => sendResponse({ ok: true }))
+      .catch((e) => sendResponse({ ok: false, error: String(e) }));
+    return true; // async
+  }
+  // Сохранение списка лент — в общую очередь с проверками и сбросами:
+  // setFeeds делает read-modify-write над seenIds/initialized (подчистка
+  // ключей удалённых лент) и, будучи вызванным напрямую из options,
+  // гонился бы и с checkFeed, и со сбросом.
+  if (msg && msg.type === "saveFeeds") {
+    runSerialized(() => setFeeds(msg.feeds))
       .then(() => sendResponse({ ok: true }))
       .catch((e) => sendResponse({ ok: false, error: String(e) }));
     return true; // async
