@@ -1,4 +1,4 @@
-import { getState, setFeeds, setSettings, feedKey, isAllowedFeedUrl, FEED_HOST } from "./storage.js";
+import { getState, setSettings, feedKey, isAllowedFeedUrl, FEED_HOST } from "./storage.js";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -16,13 +16,7 @@ async function init() {
     });
   });
 
-  if (state.feeds.length === 0) {
-    // Никаких предустановленных лент. Юзер сам добавляет URL.
-    addFeedRow({ id: newId(), title: "", url: "", enabled: true });
-  } else {
-    state.feeds.forEach((f) => addFeedRow(f, state.status[feedKey(f)]));
-  }
-  updateCertHelp(state);
+  renderFeeds(state);
 
   $("#add-feed").addEventListener("click", () =>
     addFeedRow({ id: newId(), title: "", url: "", enabled: true })
@@ -31,6 +25,23 @@ async function init() {
   $("#save").addEventListener("click", save);
   $("#check-now").addEventListener("click", checkNow);
   $("#reset-all").addEventListener("click", resetAll);
+}
+
+// Полная перерисовка списка лент. Вызывается из init и после каждого успешного
+// save(): ключ сброса и состояние кнопки «Сбросить» фиксируются при отрисовке
+// строки (из сохранённого объекта ленты), поэтому без перерисовки только что
+// добавленная лента оставалась бы с выключенной кнопкой до перезагрузки,
+// а после смены URL кнопка била бы по старому ключу.
+async function renderFeeds(state) {
+  const feeds = $("#feeds");
+  feeds.innerHTML = "";
+  if (state.feeds.length === 0) {
+    // Никаких предустановленных лент. Юзер сам добавляет URL.
+    addFeedRow({ id: newId(), title: "", url: "", enabled: true });
+  } else {
+    state.feeds.forEach((f) => addFeedRow(f, state.status[feedKey(f)]));
+  }
+  updateCertHelp(state);
 }
 
 async function resetAll() {
@@ -131,11 +142,21 @@ async function save() {
   if (!Number.isFinite(intervalMinutes) || intervalMinutes < 1) intervalMinutes = 10;
   if (intervalMinutes > 10080) intervalMinutes = 10080; // 7 дней
 
-  await setFeeds(feeds);
+  // Сохранение лент — через service worker: setFeeds делает read-modify-write
+  // над seenIds/initialized и должен сериализоваться с фоновыми проверками и
+  // сбросами (runSerialized там), иначе параллельный «Сбросить» терялся бы.
+  const res = await chrome.runtime.sendMessage({ type: "saveFeeds", feeds });
+  if (!res || !res.ok) {
+    setStatus("Ошибка: " + (res?.error || "неизвестно"));
+    return false;
+  }
   await setSettings({ intervalMinutes });
   await chrome.runtime.sendMessage({ type: "reschedule" });
   // Ленту могли выключить или удалить — badge с ошибкой должен это учесть.
   await chrome.runtime.sendMessage({ type: "refreshBadge" });
+  // Перерисовываем строки из сохранённого состояния: ключи сброса и кнопки
+  // зафиксированы при отрисовке и должны увидеть свежесохранённые ленты.
+  await renderFeeds(await getState());
   setStatus("Сохранено ✓");
   return true;
 }
