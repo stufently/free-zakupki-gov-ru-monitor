@@ -157,14 +157,18 @@ export async function pushRecent(entries) {
   // markSeen помечает запись виденной (guid || link || title):
   //   - feedId в ключе не даёт записи с одинаковым link из двух лент
   //     (пересекающиеся поиски) выкидывать запись из первой группы;
-  //   - id вместо link различает записи без link, но с разными guid
-  //     (у них может совпасть заголовок).
+  //   - id вместо link различает записи без link, но с разными guid.
+  // Записи, сохранённые до появления id (старые версии), НЕ дедуплицируем:
+  // надёжного ключа для них нет (link нет, title может совпадать у разных
+  // тендеров), и выбросить живую запись хуже, чем оставить потенциальный дубль.
   const seen = new Set();
   const recent = [];
   for (const entry of [...entries, ...cur.recent]) {
-    const key = `${entry.feedId}:${entry.id || entry.link || entry.title}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
+    if (entry.id || entry.link) {
+      const key = `${entry.feedId}:${entry.id || entry.link}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+    }
     recent.push(entry);
     if (recent.length >= cur.settings.maxRecent) break;
   }
