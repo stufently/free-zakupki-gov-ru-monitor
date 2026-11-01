@@ -204,7 +204,12 @@ function sameRecentEntry(a, b) {
   // по link. Совпадения title недостаточно: у разных тендеров он может
   // повторяться.
   if (a.id || b.id) return !!a.id && a.id === b.id;
-  return !!a.link && a.link === b.link;
+  if (a.link || b.link) return a.link === b.link;
+  // Совсем старые записи — без id и без link: сопоставляем по title + foundAt
+  // (метка времени обнаружения). Не идеально для одновременных дублей, но
+  // лучше, чем не сопоставлять вовсе: иначе отметка прочитанного терялась бы
+  // при каждом открытии попапа.
+  return a.title === b.title && a.foundAt === b.foundAt;
 }
 
 // Сброс состояния ленты: забываем seenIds и флаг initialized, но НЕ трогаем
