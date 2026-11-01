@@ -36,6 +36,9 @@ li {
 }
 li:hover { background: #fafafa; }
 li .title { font-size: 13px; line-height: 1.35; color: #1971c2; }
+/* Непрочитанные записи — жирным; клик снимает выделение */
+li .title.unread { font-weight: 700; }
+.footer-actions { display: flex; gap: 8px; }
 li .meta { font-size: 11px; color: #888; margin-top: 4px; display: flex; justify-content: space-between; }
 li.empty { color: #888; cursor: default; text-align: center; padding: 24px 12px; font-size: 13px; }
 li.empty:hover { background: transparent; }

@@ -175,6 +175,34 @@ export async function clearRecent() {
   await chrome.storage.local.set({ recent: [] });
 }
 
+// Помечает запись прочитанной. Идентификация — та же, что в дедупликации
+// pushRecent: feedId + id, с фолбэком на link для старых записей без id.
+// Вызывать через сообщение "markRead" в background.js — запись в recent
+// сериализуется с pushRecent (иначе гонка read-modify-write).
+export async function markRecentRead(item) {
+  if (!item) return;
+  const cur = await getState();
+  const recent = cur.recent.map((e) =>
+    sameRecentEntry(e, item) ? { ...e, read: true } : e
+  );
+  await chrome.storage.local.set({ recent });
+}
+
+export async function markAllRecentRead() {
+  const cur = await getState();
+  const recent = cur.recent.map((e) => ({ ...e, read: true }));
+  await chrome.storage.local.set({ recent });
+}
+
+function sameRecentEntry(a, b) {
+  if (a.feedId !== b.feedId) return false;
+  // Записи с id сопоставляем по id; старые записи без id (до появления поля) —
+  // по link. Совпадения title недостаточно: у разных тендеров он может
+  // повторяться.
+  if (a.id || b.id) return !!a.id && a.id === b.id;
+  return !!a.link && a.link === b.link;
+}
+
 // Сброс состояния ленты: забываем seenIds и флаг initialized, но НЕ трогаем
 // саму ленту и «Недавние». Следующая проверка посчитает текущие записи ленты
 // новыми — попадут в список, но уведомлений не будет (сработает first-run).

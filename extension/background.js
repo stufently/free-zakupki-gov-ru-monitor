@@ -8,8 +8,11 @@ import {
   markInitialized,
   pushRecent,
   setFeedStatus,
+  setFeeds,
   resetFeed,
   resetAllFeeds,
+  markRecentRead,
+  markAllRecentRead,
   feedKey,
   isAllowedFeedUrl,
   FEED_HOST,
@@ -66,6 +69,20 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       .then(() => sendResponse({ ok: true }))
       .catch((e) => sendResponse({ ok: false, error: String(e) }));
     return true;
+  }
+  // Отметка прочитанности — тоже в общую очередь: recent пишут и pushRecent
+  // из фоновой проверки, прямой вызов из popup гонился бы с ним.
+  if (msg && msg.type === "markRead") {
+    runSerialized(() => markRecentRead(msg.item))
+      .then(() => sendResponse({ ok: true }))
+      .catch((e) => sendResponse({ ok: false, error: String(e) }));
+    return true; // async
+  }
+  if (msg && msg.type === "markAllRead") {
+    runSerialized(markAllRecentRead)
+      .then(() => sendResponse({ ok: true }))
+      .catch((e) => sendResponse({ ok: false, error: String(e) }));
+    return true; // async
   }
   // Сброс состояния лент — тоже через service worker: только здесь он
   // сериализуется с фоновыми проверками (см. runSerialized).

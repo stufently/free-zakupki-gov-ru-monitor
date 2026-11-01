@@ -29,6 +29,17 @@ $("#clear").addEventListener("click", async () => {
   await render();
 });
 
+$("#read-all").addEventListener("click", async () => {
+  // Через service worker: recent пишут и фоновые проверки, запись должна
+  // сериализоваться с ними.
+  const res = await chrome.runtime.sendMessage({ type: "markAllRead" });
+  if (!res || !res.ok) {
+    setStatus("Ошибка: " + (res?.error || "неизвестно"));
+    return;
+  }
+  await render();
+});
+
 async function render() {
   const state = await getState();
   const list = $("#recent");
@@ -112,10 +123,23 @@ async function render() {
           <div class="title"></div>
           <div class="meta"><span class="date"></span></div>
         `;
-        li.querySelector(".title").textContent = item.title;
+        const title = li.querySelector(".title");
+        title.textContent = item.title;
+        // Непрочитанные — жирным: новая запись сразу выделяется в списке.
+        if (!item.read) title.classList.add("unread");
         li.querySelector(".date").textContent = formatDate(item.pubDate || item.foundAt);
         li.addEventListener("click", () => {
           if (item.link) chrome.tabs.create({ url: item.link });
+          // Клик = «посмотрел»: снимаем жирный сразу, без перерисовки
+          // (перерисовка свернула бы раскрытые группы). Хранилище обновляет
+          // service worker — сериализовано с pushRecent.
+          if (!item.read) {
+            item.read = true;
+            title.classList.remove("unread");
+            // fire-and-forget: если worker недоступен, запись останется
+            // непрочитанной в хранилище — не страшно, следующий клик повторит.
+            chrome.runtime.sendMessage({ type: "markRead", item }).catch(() => {});
+          }
         });
         sublist.appendChild(li);
       }
