@@ -27,11 +27,10 @@ async function init() {
   $("#reset-all").addEventListener("click", resetAll);
 }
 
-// Полная перерисовка списка лент. Вызывается из init и после каждого успешного
-// save(): ключ сброса и состояние кнопки «Сбросить» фиксируются при отрисовке
-// строки (из сохранённого объекта ленты), поэтому без перерисовки только что
-// добавленная лента оставалась бы с выключенной кнопкой до перезагрузки,
-// а после смены URL кнопка била бы по старому ключу.
+// Полная перерисовка списка лент — только при открытии настроек. После save()
+// строки НЕ перерисовываются (обновляются только кнопки «Сбросить» на месте):
+// saveFeeds ждёт в общей очереди десятки секунд, и перерисовка молча откатила
+// бы всё, что пользователь успел ввести, добавить или удалить за это время.
 async function renderFeeds(state) {
   const feeds = $("#feeds");
   feeds.innerHTML = "";
@@ -63,30 +62,48 @@ function addFeedRow(feed, status) {
   row.querySelector(".url").value = feed.url || "";
   row.querySelector(".enabled input").checked = feed.enabled !== false;
   row.querySelector(".remove").addEventListener("click", () => row.remove());
-  // Ключ — из СОХРАНЁННОГО объекта ленты (замыкание), а не из input:
-  // по несохранённому URL сбрасывать нечего. Несохранённые ленты — кнопка
-  // выключена; для сохранённых пользователь мог отредактировать URL в строке,
-  // тогда сброс относится к сохранённому адресу.
-  const savedKey = feed.url ? feedKey(feed) : "";
-  if (!savedKey) {
-    row.querySelector(".reset").disabled = true;
-    row.querySelector(".reset").title = "Сначала сохраните ленту и дождитесь первой проверки";
-  } else {
-    row.querySelector(".reset").addEventListener("click", async () => {
-      const res = await chrome.runtime.sendMessage({ type: "resetFeed", urlKey: savedKey });
-      if (!res || !res.ok) {
-        setStatus("Ошибка: " + (res?.error || "неизвестно"));
-        return;
-      }
-      if (!res.changed) {
-        setStatus("Нечего сбрасывать: лента ещё не проверялась.");
-        return;
-      }
-      setStatus(`Лента «${feed.title || feed.url.slice(0, 40)}» сброшена ✓`);
-    });
-  }
+  row.querySelector(".reset").addEventListener("click", onResetClick);
+  // Ключ — из СОХРАНЁННОГО объекта ленты, а не из input: по несохранённому
+  // URL сбрасывать нечего. Хранится в dataset, а не в замыкании — save()
+  // обновляет его на месте, не перерисовывая строки.
+  updateResetButton(row, feed);
   renderStatus(row.querySelector(".feed-status"), status, feed.url);
   $("#feeds").appendChild(row);
+}
+
+// Синхронизирует кнопку «Сбросить» со строки с сохранённым состоянием ленты.
+// Вызывается при отрисовке и после каждого save() — БЕЗ перерисовки строк:
+// saveFeeds ждёт в общей очереди (фоновая проверка — это десятки секунд),
+// и полная перерисовка молча откатила бы всё, что пользователь успел
+// ввести, добавить или удалить за это время.
+function updateResetButton(row, savedFeed) {
+  const btn = row.querySelector(".reset");
+  if (savedFeed && savedFeed.url) {
+    row.dataset.resetKey = feedKey(savedFeed);
+    btn.disabled = false;
+    btn.title = "Забыть состояние ленты: при следующей проверке её текущие записи снова попадут в «Недавние» (без уведомлений)";
+  } else {
+    delete row.dataset.resetKey;
+    btn.disabled = true;
+    btn.title = "Сначала сохраните ленту и дождитесь первой проверки";
+  }
+}
+
+async function onResetClick(event) {
+  const row = event.currentTarget.closest(".feed-row");
+  const key = row.dataset.resetKey;
+  if (!key) return;
+  const res = await chrome.runtime.sendMessage({ type: "resetFeed", urlKey: key });
+  if (!res || !res.ok) {
+    setStatus("Ошибка: " + (res?.error || "неизвестно"));
+    return;
+  }
+  if (!res.changed) {
+    setStatus("Нечего сбрасывать: лента ещё не проверялась.");
+    return;
+  }
+  const title = row.querySelector(".title").value.trim() || key.slice(0, 40);
+  setStatus(`Лента «${title}» сброшена ✓`);
 }
 
 // Показываем состояние последней проверки прямо под лентой. До 0.2.0 фоновые
@@ -145,7 +162,18 @@ async function save() {
   // Сохранение лент — через service worker: setFeeds делает read-modify-write
   // над seenIds/initialized и должен сериализоваться с фоновыми проверками и
   // сбросами (runSerialized там), иначе параллельный «Сбросить» терялся бы.
-  const res = await chrome.runtime.sendMessage({ type: "saveFeeds", feeds });
+  // Очередь может ждать десятки секунд (идёт фоновая проверка) — на это время
+  // блокируем форму, чтобы второе «Сохранить» не перехлестнулось с первым.
+  $("#save").disabled = true;
+  $("#check-now").disabled = true;
+  setStatus("Сохраняю…");
+  let res;
+  try {
+    res = await chrome.runtime.sendMessage({ type: "saveFeeds", feeds });
+  } finally {
+    $("#save").disabled = false;
+    $("#check-now").disabled = false;
+  }
   if (!res || !res.ok) {
     setStatus("Ошибка: " + (res?.error || "неизвестно"));
     return false;
@@ -154,9 +182,11 @@ async function save() {
   await chrome.runtime.sendMessage({ type: "reschedule" });
   // Ленту могли выключить или удалить — badge с ошибкой должен это учесть.
   await chrome.runtime.sendMessage({ type: "refreshBadge" });
-  // Перерисовываем строки из сохранённого состояния: ключи сброса и кнопки
-  // зафиксированы при отрисовке и должны увидеть свежесохранённые ленты.
-  await renderFeeds(await getState());
+  // Обновляем ТОЛЬКО ключи и кнопки «Сбросить» — на месте, не перерисовывая
+  // строки и не трогая введённые значения (см. updateResetButton).
+  $$("#feeds .feed-row").forEach((row) => {
+    updateResetButton(row, feeds.find((f) => f.id === row.dataset.id));
+  });
   setStatus("Сохранено ✓");
   return true;
 }
