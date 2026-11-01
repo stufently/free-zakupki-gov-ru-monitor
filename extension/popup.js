@@ -1,4 +1,4 @@
-import { getState, clearRecent, feedKey } from "./storage.js";
+import { getState, feedKey } from "./storage.js";
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -18,13 +18,13 @@ $("#check-now").addEventListener("click", async () => {
 $("#open-options").addEventListener("click", () => chrome.runtime.openOptionsPage());
 
 $("#clear").addEventListener("click", async () => {
-  await clearRecent();
-  // Не стираем badge напрямую: если какая-то лента сломана, на нём должен
-  // остаться красный «!». Пересчёт делает service worker.
-  try {
-    await chrome.runtime.sendMessage({ type: "refreshBadge" });
-  } catch {
-    // ignore
+  // Через service worker: recent пишут и фоновые проверки (pushRecent), и
+  // отметки прочитанности — очистка должна встать в ту же очередь. Badge
+  // пересчитывает сам worker (там видны сломанные ленты).
+  const res = await chrome.runtime.sendMessage({ type: "clearRecent" });
+  if (!res || !res.ok) {
+    setStatus("Ошибка: " + (res?.error || "неизвестно"));
+    return;
   }
   await render();
 });
