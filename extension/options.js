@@ -163,32 +163,44 @@ async function save() {
   // над seenIds/initialized и должен сериализоваться с фоновыми проверками и
   // сбросами (runSerialized там), иначе параллельный «Сбросить» терялся бы.
   // Очередь может ждать десятки секунд (идёт фоновая проверка) — на это время
-  // блокируем форму, чтобы второе «Сохранить» не перехлестнулось с первым.
+  // блокируем форму. Блокировка снимается только в самом конце save():
+  // повторное «Сохранить» в промежутке могло бы закончиться раньше первого
+  // и перезаписать обновлённые ключи старыми данными.
   $("#save").disabled = true;
   $("#check-now").disabled = true;
   setStatus("Сохраняю…");
-  let res;
   try {
-    res = await chrome.runtime.sendMessage({ type: "saveFeeds", feeds });
+    const res = await chrome.runtime.sendMessage({ type: "saveFeeds", feeds });
+    if (!res || !res.ok) {
+      setStatus("Ошибка: " + (res?.error || "неизвестно"));
+      return false;
+    }
+    await setSettings({ intervalMinutes });
+    await chrome.runtime.sendMessage({ type: "reschedule" });
+    // Ленту могли выключить или удалить — badge с ошибкой должен это учесть.
+    await chrome.runtime.sendMessage({ type: "refreshBadge" });
+    // Обновляем на месте только служебные элементы строк — не перерисовывая
+    // их и не трогая введённые значения (см. updateResetButton):
+    //   - ключ и кнопку «Сбросить»;
+    //   - диагностику проверки — по НОВОМУ ключу: после смены URL старый
+    //     .feed-status и подсказка про сертификат относились к прежней ленте.
+    const state = await getState();
+    $$("#feeds .feed-row").forEach((row) => {
+      const saved = feeds.find((f) => f.id === row.dataset.id);
+      updateResetButton(row, saved);
+      renderStatus(
+        row.querySelector(".feed-status"),
+        saved && saved.url ? state.status[feedKey(saved)] : null,
+        saved && saved.url
+      );
+    });
+    updateCertHelp(state);
+    setStatus("Сохранено ✓");
+    return true;
   } finally {
     $("#save").disabled = false;
     $("#check-now").disabled = false;
   }
-  if (!res || !res.ok) {
-    setStatus("Ошибка: " + (res?.error || "неизвестно"));
-    return false;
-  }
-  await setSettings({ intervalMinutes });
-  await chrome.runtime.sendMessage({ type: "reschedule" });
-  // Ленту могли выключить или удалить — badge с ошибкой должен это учесть.
-  await chrome.runtime.sendMessage({ type: "refreshBadge" });
-  // Обновляем ТОЛЬКО ключи и кнопки «Сбросить» — на месте, не перерисовывая
-  // строки и не трогая введённые значения (см. updateResetButton).
-  $$("#feeds .feed-row").forEach((row) => {
-    updateResetButton(row, feeds.find((f) => f.id === row.dataset.id));
-  });
-  setStatus("Сохранено ✓");
-  return true;
 }
 
 async function checkNow() {
