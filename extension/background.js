@@ -13,6 +13,7 @@ import {
   resetAllFeeds,
   markRecentRead,
   markAllRecentRead,
+  clearRecent,
   feedKey,
   isAllowedFeedUrl,
   FEED_HOST,
@@ -80,6 +81,16 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
   if (msg && msg.type === "markAllRead") {
     runSerialized(markAllRecentRead)
+      .then(() => sendResponse({ ok: true }))
+      .catch((e) => sendResponse({ ok: false, error: String(e) }));
+    return true; // async
+  }
+  // «Очистить» в popup — тоже через очередь: recent пишут и pushRecent,
+  // и отметки прочитанности; прямой вызов clearRecent из popup вернул бы
+  // записи из чужого снапшота. Badge пересчитываем здесь же — после очистки.
+  if (msg && msg.type === "clearRecent") {
+    runSerialized(clearRecent)
+      .then(() => updateBadge())
       .then(() => sendResponse({ ok: true }))
       .catch((e) => sendResponse({ ok: false, error: String(e) }));
     return true; // async
