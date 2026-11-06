@@ -28,9 +28,7 @@ concurrency:
 
 jobs:
   site:
-    uses: stufently/gh-pages-site/.github/workflows/pages.yml@faa0ef077c9146a665cb1c3e11618c09aae183da # v1.0.1
-    with:
-      generator_ref: faa0ef077c9146a665cb1c3e11618c09aae183da
+    uses: stufently/gh-pages-site/.github/workflows/pages.yml@8617cf629539138022c5ac11dc96c8f957e0a19f # v1.1.0
     permissions:
       contents: read
       pages: write
